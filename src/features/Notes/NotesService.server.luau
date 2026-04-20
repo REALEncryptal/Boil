@@ -1,9 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Net = require(ReplicatedStorage.Packages.Net)
-
 local Constants = require(ReplicatedStorage.Features.Notes.Constants)
+local Packets = require(ReplicatedStorage.Features.Notes.Packets)
 local PlayerDataService = require(ServerScriptService.Features.PlayerData.PlayerDataService)
 
 local NotesService = {}
@@ -12,24 +11,17 @@ local NotesService = {}
 NotesService.Priority = 5
 
 function NotesService.Start()
-	Net:Connect(Constants.SET_NOTE_EVENT, function(player: Player, text: any)
-		-- Validate: server is authoritative, never trust client payloads.
-		if typeof(text) ~= "string" then
-			return
-		end
+	Packets.SetNote.listen(function(payload, player)
+		-- ByteNet decoded the payload against the schema, but we still clamp
+		-- length on the server — the client could send a valid-typed but
+		-- pathologically long string.
+		local text = payload.text
 		if #text > Constants.MAX_LENGTH then
 			text = string.sub(text, 1, Constants.MAX_LENGTH)
 		end
 
-		local replica = PlayerDataService.GetReplica(player)
-		if replica == nil then
-			return
-		end
-
-		-- Mutating through the replica: ReplicaService ships a diff to the
-		-- owning client, and because Data is the same table as Profile.Data,
-		-- ProfileStore will persist it on its next autosave.
-		replica:SetValue({ "Note" }, text)
+		-- Blessed mutation path: replica + profile stay in sync.
+		PlayerDataService.SetValue(player, { "Note" }, text)
 	end)
 end
 

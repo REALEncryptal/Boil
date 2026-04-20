@@ -1,8 +1,10 @@
--- Stateful container. Subscribes to the PlayerData replica for the current
--- note and hands it + the save callback down to the dumb NotesUI component.
+-- Stateful container. Uses the shared useReplica hook instead of reimplementing
+-- the connect/disconnect lifecycle.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
+
+local utils = require(ReplicatedStorage.Shared.utils)
 
 -- client-realm siblings resolved via the StarterPlayerScripts.Features tree
 local NotesController = require(script.Parent.NotesController)
@@ -10,22 +12,7 @@ local PlayerDataController = require(script.Parent.Parent.PlayerData.PlayerDataC
 local NotesUI = require(ReplicatedStorage.Features.Notes.NotesUI)
 
 return function()
-	local note, setNote = React.useState("")
-
-	React.useEffect(function()
-		local data = PlayerDataController.GetData()
-		if data then
-			setNote(data.Note or "")
-		end
-
-		local conn = PlayerDataController.DataChanged:Connect(function(newData)
-			setNote((newData and newData.Note) or "")
-		end)
-
-		return function()
-			conn:Disconnect()
-		end
-	end, {} :: { any })
+	local note = utils.useReplica(PlayerDataController, "Note") or ""
 
 	return React.createElement(NotesUI, {
 		note = note,

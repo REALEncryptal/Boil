@@ -17,6 +17,7 @@ src/features/Inventory/
 src/features/Inventory/
 ├── init.luau                        -- shared public surface
 ├── Constants.luau                   -- shared config / tunables (see below)
+├── Packets.luau                     -- shared ByteNet packet schema (see below)
 ├── InventoryService.server.luau     -- server-only logic
 ├── InventoryController.client.luau  -- client-only logic
 ├── InventoryUI.ui.luau              -- React component (shared replicated)
@@ -36,6 +37,41 @@ ServerScriptService.Features.Inventory
 StarterPlayerScripts.Features.Inventory
   └── InventoryController   (from InventoryController.client.luau; .client stripped)
 ```
+
+## Networking (ByteNet Packets module)
+
+If a feature has server ↔ client traffic, define packets in a shared `Packets.luau` inside the feature folder. Both realms require the same module; ByteNet handles wire format and reliability.
+
+```lua
+-- src/features/Inventory/Packets.luau
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ByteNet = require(ReplicatedStorage.Packages.ByteNet)
+
+return ByteNet.defineNamespace("Inventory", function()
+    return {
+        EquipItem = ByteNet.definePacket({
+            value = ByteNet.struct({
+                slot = ByteNet.uint8,
+                itemId = ByteNet.string,
+            }),
+            reliabilityType = "reliable",
+        }),
+    }
+end)
+```
+
+Usage:
+```lua
+-- server (InventoryService.server.luau)
+Packets.EquipItem.listen(function(payload, player) ... end)
+
+-- client (InventoryController.client.luau)
+Packets.EquipItem.send({ slot = 2, itemId = "WoodenSword" })
+```
+
+Why Packets.luau over `sleitnick/net`: the namespace is strongly typed by schema, payloads are buffer-packed (much smaller on the wire), and typos in packet names fail at require-time instead of silently sending to the void.
+
+See `src/features/Notes/Packets.luau` for the working example.
 
 ## Constants module
 

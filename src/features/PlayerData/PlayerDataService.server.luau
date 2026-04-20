@@ -29,6 +29,19 @@ function PlayerDataService.GetReplica(player: Player)
 	return replicas[player]
 end
 
+-- Blessed mutation path. Always route writes through this so:
+--   (a) clients receive a Replica diff,
+--   (b) ProfileStore autosave persists the change (profile.Data === replica.Data),
+--   (c) we get one place to add logging, rate-limiting, or validation later.
+function PlayerDataService.SetValue(player: Player, path: { string }, value: any): boolean
+	local replica = replicas[player]
+	if replica == nil then
+		return false
+	end
+	replica:SetValue(path, value)
+	return true
+end
+
 -- Lifecycle ------------------------------------------------------------------
 
 local function onPlayerAdded(player: Player)
@@ -53,7 +66,25 @@ local function onPlayerAdded(player: Player)
 			replica:Destroy()
 			replicas[player] = nil
 		end
-		player:Kick("[PlayerData] profile session ended")
+		if player.Parent == Players then
+			player:Kick("[PlayerData] profile session ended")
+		end
+	end)
+
+	-- Invariant: replica.Data and profile.Data must remain the same table.
+	-- If someone ever re-assigns profile.Data (or builds a new table and swaps
+	-- it in) the replica stops saving silently. Fire a loud warning before
+	-- every save so the drift is obvious in the output window.
+	profile.OnSave:Connect(function()
+		local replica = replicas[player]
+		if replica ~= nil and replica.Data ~= profile.Data then
+			warn(
+				`[PlayerData] identity drift for {player.Name}: `
+					.. `replica.Data and profile.Data are no longer the same table. `
+					.. `Use PlayerDataService.SetValue / .GetReplica to mutate; `
+					.. `do not reassign profile.Data.`
+			)
+		end
 	end)
 
 	if player.Parent ~= Players then

@@ -15,7 +15,8 @@
 | `React`       | `jsdotlua/react@17.1.0`         | `require(ReplicatedStorage.Packages.React)`                           |
 | `ReactRoblox` | `jsdotlua/react-roblox@17.1.0`  | `require(ReplicatedStorage.Packages.ReactRoblox)` — for `createRoot`  |
 | `Loader`      | `sleitnick/loader@2.0.0`        | `require(ReplicatedStorage.Packages.Loader)` — module auto-loader     |
-| `Net`         | `sleitnick/net@0.2.0`           | `require(ReplicatedStorage.Packages.Net)` — static networking (RemoteEvents / RemoteFunctions by name). Docs: <https://sleitnick.github.io/RbxUtil/api/Net> |
+| `ByteNet`     | `ffrostflame/bytenet@0.4.6`     | **Preferred networking.** Schema-defined packets, buffer-packed. See `src/features/Notes/Packets.luau` for the canonical pattern. Docs: <https://ffrostflame.github.io/ByteNet/> |
+| `Net`         | `sleitnick/net@0.2.0`           | Simple alternative for one-off RemoteEvents by name. Kept in the toolbox but not the default. Docs: <https://sleitnick.github.io/RbxUtil/api/Net> |
 | `Trove`       | `sleitnick/trove@1.8.0`         | `require(ReplicatedStorage.Packages.Trove)` — track & clean up instances, connections, tasks. Docs: <https://sleitnick.github.io/RbxUtil/api/Trove> |
 | `Signal`      | `sleitnick/signal@2.0.3`        | `require(ReplicatedStorage.Packages.Signal)` — typed Lua signals (`Signal.new()`). Docs: <https://sleitnick.github.io/RbxUtil/api/Signal> |
 | `ReplicaService` | `brittonfischer/replicaservice@0.1.0` | Shared realm. Server: `require(ReplicatedStorage.Packages.ReplicaService)` for `ReplicaService`. Client: the same path exposes `ReplicaController`. Docs: <https://madstudioroblox.github.io/ReplicaService/> |
@@ -59,6 +60,20 @@ Non-`.luau` files in feature folders are ignored.
 | `Loader.SpawnAll(modules, methodName)`     | Calls `module[methodName]()` on each loaded module under `task.spawn`. |
 
 Full docs: <https://sleitnick.github.io/RbxUtil/api/Loader>
+
+## useReplica (src/shared/utils/useReplica.luau)
+
+React hook for subscribing to any data controller that exposes `GetData()` + `DataChanged: Signal`. Handles connect/disconnect lifecycle so features don't reimplement the `useEffect` pattern.
+
+```lua
+local utils = require(ReplicatedStorage.Shared.utils)
+
+-- whole data table (re-renders on any change)
+local data  = utils.useReplica(PlayerDataController)
+
+-- single key (re-renders when that key changes; cheaper)
+local coins = utils.useReplica(PlayerDataController, "Coins")
+```
 
 ## LoadOrdered (src/shared/utils/LoadOrdered.luau)
 
