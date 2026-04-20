@@ -1,0 +1,25 @@
+{
+  "name": "Boil",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Packages":  { "$path": "Packages" },
+      "Shared":    { "$path": "src/shared" },
+      "Features":  { "$path": "build/shared" }
+    },
+
+    "ServerScriptService": {
+      "Server":         { "$path": "src/server" },
+      "Features":       { "$path": "build/server" },
+      "ServerPackages": { "$path": "ServerPackages" }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client":   { "$path": "src/client" },
+        "Features": { "$path": "build/client" }
+      }
+    }
+  }
+}
