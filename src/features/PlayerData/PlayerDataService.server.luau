@@ -5,14 +5,18 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ProfileStore = require(ServerScriptService.ServerPackages.ProfileStore)
 local ReplicaService = require(ReplicatedStorage.Packages.ReplicaService)
 
-local Constants = require(ReplicatedStorage.Features.PlayerData.Constants)
+-- Requiring PlayerData (the parent init.luau) triggers the auto-discovery loop
+-- that pulls every feature's PlayerData.luau slice into the template before
+-- we hand it to ProfileStore.
+local PlayerData = require(ReplicatedStorage.Features.PlayerData)
+local Constants = PlayerData.Constants
 
 local PlayerDataService = {}
 
 -- Runs before any other service that reads player data.
 PlayerDataService.Priority = 1
 
-local Store = ProfileStore.New(Constants.STORE_NAME, Constants.PROFILE_TEMPLATE)
+local Store = ProfileStore.New(Constants.STORE_NAME, PlayerData.getTemplate())
 local ReplicaToken = ReplicaService.NewClassToken(Constants.REPLICA_CLASS)
 
 local profiles: { [Player]: any } = {}

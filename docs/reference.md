@@ -37,7 +37,7 @@ lune run tools/split             # one-shot rebuild of build/
 lune run tools/split -- --watch  # rebuild when files under src/features/ change
 ```
 
-`--watch` polls every 500ms using `fs.metadata().modifiedAt.unixTimestamp`. It clears and regenerates `build/` on any detected change.
+`--watch` polls every 500ms using `fs.metadata().modifiedAt.unixTimestamp`. Builds are incremental: only changed files are written and stale files are deleted in place. The three realm directories (`build/shared`, `build/server`, `build/client`) are preserved across runs so Rojo's file watcher never sees them vanish — newly-added feature folders sync without needing a `rojo serve` restart.
 
 ### Filename classification
 
@@ -85,6 +85,173 @@ Loader.SpawnAll(LoadOrdered(modules), "Start")
 ```
 
 Sorts in place by each module's `.Priority` field (ascending). Modules where `.Priority` is absent or not a number sort to the end. Returns the same list for chaining.
+
+## Shared UI primitives (src/shared/ui/)
+
+Gem-styled React components shared across features. Mirror the Studio template at `src/features/UIShowcase/` — if a visual diverges, re-export the artwork and bump IDs in `assets.luau`.
+
+```lua
+local ui = require(ReplicatedStorage.Shared.ui)
+
+-- Gem button (variant: red | blue | green | purple | yellow | white | rainbow)
+React.createElement(ui.Button, {
+    variant = "red", text = "X", size = UDim2.fromOffset(60, 60),
+    onClick = function() ... end,
+})
+
+-- Icon + text pill (same palette set; no shine layer)
+React.createElement(ui.Badge, {
+    variant = "blue", text = "Rebirth", icon = "rbxassetid://…",
+})
+
+-- Translucent dark glass container with a white outline
+React.createElement(ui.Panel, {
+    size = UDim2.fromOffset(800, 600),
+}, {
+    Title = React.createElement("TextLabel", { ... }),
+})
+```
+
+Add new color palettes by extending `Assets.Variants` in `src/shared/ui/assets.luau` rather than threading raw `ColorSequence` values through props. The Badge primitive looks up `Assets.BadgeVariants` first and falls back to `Assets.Variants`, so Badge-specific tunings live in their own table.
+
+### Icon registry (`ui.assets.Icons`, `ui.assets.Brainrots`)
+
+UI icon and character-image asset IDs live in `src/shared/ui/assets.luau` so a re-upload is a one-line edit and call sites never paste raw `rbxassetid://…` strings.
+
+```lua
+local ui = require(ReplicatedStorage.Shared.ui)
+
+React.createElement(ui.Badge, {
+    variant = "blue", text = "Rebirth",
+    icon = ui.assets.Icons.rebirth,
+})
+
+React.createElement(ui.IconButton, {
+    variant = "yellow",
+    icon = ui.assets.Icons.bandOfCash,
+})
+```
+
+| Table                  | Keys                                                                                                  | Intended use                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `assets.Icons`         | `rebirth`, `bandOfCash`, `shoppingBasket`, `questionMark`, `friends`, `wheel`, `rocket`               | UI symbols (Badge / IconButton / HUD)     |
+| `assets.Brainrots`     | `tungTungTungSahur`, `liriliLarila`, `trippiTroppi`, `tralaleroTralala`                               | Character art (cards, collectibles)       |
+
+Types `Assets.IconKey` and `Assets.BrainrotKey` are exported for prop signatures.
+
+### Design tokens (`ui.theme`)
+
+`src/shared/ui/theme.luau` holds every shared visual default — stroke width, padding, transparency, text sizes, hover scale, etc. Every primitive in `src/shared/ui/` reads from it on each render (props still override per call site), so bumping a token here updates the whole UI.
+
+```lua
+local ui = require(ReplicatedStorage.Shared.ui)
+
+ui.theme.strokeThickness     -- 4   gem outline (Button, Panel, TextField, GemBackground)
+ui.theme.thinStrokeThickness -- 2   non-gem text outline (Text shadow, Sidebar label)
+ui.theme.glassTransparency   -- 0.8 Panel/TextField translucent dark surfaces
+ui.theme.padding             -- 10  default inner padding
+ui.theme.hoverScale          -- 1.06
+```
+
+The token table holds **base values only**. Token relationships (e.g. Window's top content padding being `padding + strokeThickness` to clear the stroke) live at the consumer's render site so they recompute every frame — that way a live theme mutation in the Theme UI Labs story propagates immediately. See `Window.luau` for the canonical pattern.
+
+To iterate visually, open the **Theme** story in UI Labs (`src/shared/ui/theme.story.luau`). Each base token gets a slider; moving one mutates the shared `theme` table, and the showcase plus every other open story picks up the new value on its next render. Settle on values you like, then bake them into `theme.luau`.
+
+When you need a new shared knob, add it to `theme.luau` rather than inlining a magic number. When you genuinely need a value that's almost-but-not-quite a token, decide whether the token itself should change or whether the difference is component-specific; only the second case stays inline.
+
+Three lower-level pieces are also exported and reusable when building new gem-styled surfaces:
+
+- `ui.Text` — TextLabel using the gem display font. `shadow = true` opts into the two-layer drop-shadow (black shadow + white foreground offset by `-2px`, each with a Miter UIStroke) that Button and Badge use internally. Default is a plain single-layer label — use that for cleaner non-gem surfaces (e.g. the Sidebar's labels).
+- `ui.GemBackground` — the noise-tiled gradient Frame with the inner-glow stroke, black miter outline, and an optional `hasShine` shine stroke. Used internally by Button (`hasShine = true`) and Badge.
+- `ui.Window` — full window layout: dark glass Panel + top bar (optional Badge title + optional close Button) + scrollable content area. Children passed in are mounted directly into the scroll body. Use for any new feature window — see `src/features/UIShowcase/UIShowcase.ui.luau` for the call pattern.
+
+### Importing from Studio (`src/shared/dev/Inspect`)
+
+Studio-built templates can be dumped to clipboard with a one-liner — select the root instance(s) in Explorer, then paste in the command bar:
+
+```lua
+require(game.ReplicatedStorage.Shared.dev.Inspect)()
+```
+
+The inspector walks the selection, prints non-default properties for every known UI class (Frames, Labels, Strokes, Gradients, Layouts, Constraints), and copies the dump to the clipboard. Paste it back to Claude alongside the `/studio-import` skill and it scaffolds the matching `shared/ui/` code, palette entry, or feature UI.
+
+### UI Labs stories
+
+Each primitive has a sibling `*.story.luau` file that the [UI Labs](https://pepeeltoro41.github.io/ui-labs/) Studio plugin auto-discovers. Stories return `{ react, reactRoblox, story, controls, summary }`. The splitter passes `.story.luau` through unchanged (no special suffix handling), so a feature can ship its own story too — see `src/features/UIShowcase/UIShowcase.story.luau`.
+
+Non-trivial controls use the UI Labs utility package (Wally `pepeeltoro41/ui-labs`):
+
+```lua
+local UILabs = require(ReplicatedStorage.Packages.UILabs)
+
+controls = {
+    variant = UILabs.Choose({ "red", "blue", "green" }),  -- dropdown
+    size = UILabs.Slider(60, 20, 400, 1),                 -- value, min, max, step
+    text = "Click",                                        -- plain string control
+}
+```
+
+Passing a bare list (`{ "red", "blue" }`) gives "Malformed control object" — always wrap multi-choice in `UILabs.Choose`.
+
+## Audio (src/shared/audio/)
+
+Centralized sound and music registry plus thin playback helpers. **Client-side**: UI sounds use `SoundService:PlayLocalSound` (errors if called from the server); the looping music Sound is parented to the client's `SoundService` so each player drives their own track. For server-broadcast audio (a global jingle), use a Sound parented to Workspace replicated over ByteNet instead.
+
+**Roblox does not play audio inside Studio plugins**, so the Audio UI Labs story below is silent in-edit. Audition the registry by Play-testing the game, not from UI Labs.
+
+```lua
+local audio = require(ReplicatedStorage.Shared.audio)
+
+audio.playUI("click")              -- fire-and-forget one-shot SFX
+audio.playUI("levelUp", 0.7)       -- override volume (default 1)
+audio.playMusic("lobby")           -- swap looping background track
+audio.playMusic("phonk", 0.4)      -- override volume (default 0.2)
+audio.stopMusic()
+audio.currentTrack()               -- nil | the active music Sound
+audio.currentTrackName()           -- nil | the key passed to playMusic
+audio.playSoundId("rbxassetid://…", 0.6) -- arbitrary one-shot outside the registry
+```
+
+| Function                              | Behavior                                                                                            |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `playUI(name, volume?)`               | One-shot via `SoundService:PlayLocalSound`. Sound is destroyed on `Ended` (with a 15s safety net for bad assets).|
+| `playSoundId(id, volume?)`            | Same as `playUI` but takes a raw `rbxassetid://…` for sounds outside the registry.                  |
+| `playMusic(name, volume?)`            | Swap looping background. No-op when the requested track is already playing. Returns the active Sound.|
+| `stopMusic()`                         | Destroy the current looping Sound.                                                                  |
+| `currentTrack()` / `currentTrackName()` | The active Sound / registry key, or `nil` when no music is playing.                                |
+
+Add new SFX/music by extending `Audio.UI` or `Audio.Music` in `src/shared/audio/init.luau`. Update the corresponding `UISoundKey` / `MusicKey` union so callers get autocomplete.
+
+The **Audio** UI Labs story (`src/shared/audio/Audio.story.luau`) mounts a button per UI sound and per music track plus a stop-music button — useful as a manifest, but silent in-edit (see plugin-audio caveat above). Use it during Play-test.
+
+### Widget hover + click sounds
+
+Every shared widget that runs through `useHoverScale` (Button, IconButton, Checkbox, and feature widgets like `SidebarItem` that reuse the hook) automatically plays:
+
+- `hoverIn` on `MouseEnter`
+- `hoverOut` on `MouseLeave`
+- `click` on `MouseButton1Down`
+
+To override per call site, pass `sounds` to `useHoverScale`:
+
+```lua
+-- Mute the whole hook (e.g. a tooltip target with no click affordance):
+local hover = ui.useHoverScale({ sounds = false })
+
+-- Swap individual cues; omitted keys keep the default:
+local hover = ui.useHoverScale({
+    sounds = { press = "purchase" },     -- buy button uses the purchase cue
+})
+```
+
+The defaults live in `DEFAULT_SOUNDS` at the top of `src/shared/ui/useHoverScale.luau`. Change a key there and every consumer follows.
+
+### Registered tracks
+
+| Table             | Keys                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `audio.UI`        | `click`, `click2`, `purchase`, `hoverIn`, `hoverOut`, `levelUp`, `swipe`, `select`, `reward`, `tick`, `money`               |
+| `audio.Music`     | `lobby`, `lobby2`, `lobby3`, `fastMusic`, `phonk`, `phonk2`, `xmas`                                                         |
 
 ## Entry scripts
 

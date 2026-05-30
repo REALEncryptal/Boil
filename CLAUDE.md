@@ -8,5 +8,42 @@ Roblox boilerplate: Rojo + Wally + React (jsdotlua), Feature-Sliced Design, mana
 - `docs/adding-a-feature.md` — the workflow for adding a feature or shared utility.
 - `docs/reference.md` — filename rules, Loader/LoadOrdered API, sync map.
 - `docs/getting-started.md` — dev loop commands.
+- `docs/game/` — per-feature documentation written as features are added.
 
 Consult the relevant doc first; don't infer structure from the tree alone.
+
+## Working with this codebase
+
+**Rojo only syncs code; Studio assets are the user's responsibility.** Models, Workspace instances, pre-built StarterGui, sounds, animations, attachments — anything that isn't a script — must be created by the user in Studio. When a feature needs an asset (a part named `SpawnPoint`, a Tool in ServerStorage, a sound at `rbxassetid://…`, a CollectionService tag), tell the user exactly what to create, where it goes, and any required name / tag / property. Don't try to fabricate assets through code workarounds.
+
+**Don't use `rojo build` for error checking.** Building an `.rbxlx` does not validate Lua/Luau — syntax errors and type mistakes pass through silently. The signals that matter are (a) `lune run tools/split` completing without throwing, and (b) the user reporting behaviour from an in-Studio Play test.
+
+**You can't run the game.** Only the user can Play-test in Studio. When they report an error, take the message at face value. If it's thin (no stack, no values, ambiguous about which branch fired), add a few `print` statements at the points you suspect, ask them to repro and paste the output, and **remove the prints once the bug is understood.** Don't leave debug scaffolding in committed code.
+
+**Roblox error line numbers reference `build/`, not `src/`.** The splitter copies files and strips `.server` / `.client` / `.ui` suffixes — so an error at `ServerScriptService.Features.Foo.FooService:42` maps back to `src/features/Foo/FooService.server.luau:42`. Translate before reading the source.
+
+**Avoid git worktrees.** Rojo's sync model is fragile across worktrees (lock files, duplicate `build/`, sourcemap drift, the plugin holding stale paths). Work on the main checkout; don't reach for `git worktree add` to parallelize.
+
+**Features extend each other through registration, not by editing each other's source.** Adding a new feature must not require touching another feature's files. If feature B needs feature A's data, schema, lifecycle, or UI surface, the dependency flows *from B into A* via a registration API A exposes — never by hand-editing A's constants/service/UI to know about B. A's source should be agnostic to every consumer; B's code is the one place that mentions B.
+
+Concrete example: a `Pets` feature that needs persistent pet data drops a `src/features/Pets/PlayerData.luau` returning `function(PlayerData) PlayerData.registerTemplate("Pets", { Owned = {}, Equipped = nil }) end`. The PlayerData feature auto-discovers that file at load time and merges the slice into the profile template before ProfileStore loads — `src/features/PlayerData/` never mentions `Pets`. The same convention exists for Settings (sibling `Settings.luau` registers categories and toggles). The shared feature owns the *mechanism* (template merging, replica plumbing, UI surface); each consuming feature owns its own *content*.
+
+When you discover an existing violation, prefer fixing the seam — add the registration API to the shared feature, move the schema/defaults back to the owning feature — over piling on another hardcoded entry. Don't extend a bad pattern just because it's already there.
+
+**Use the prebuilt shared UI components first; only go custom when nothing fits.** Before writing any `React.createElement("Frame", …)`, `"TextLabel"`, `"TextButton"`, etc., check what already exists in `src/shared/ui/` (`Button`, `IconButton`, `Panel`, `Window`, `Badge`, `Checkbox`, `ProgressBar`, `ScrollList`, `Text`, `TextField`, hover/tween hooks, theme, asset registry). Compose those — don't reimplement them. Custom raw-Roblox elements are only acceptable when (a) no prebuilt covers the use case and (b) adding the missing primitive to `src/shared/ui/` is wrong scope for the task. In that case, prefer adding a new shared primitive over inlining a bespoke block in a feature. The user iterates on visuals in Studio and produces better UI than we can; our job is to wire features together using the shared kit.
+
+**Account for stroke thickness when padding stroked surfaces.** Strokes consume visual space at the edge of a parent — a child placed at the mathematically-correct `padding` distance visually crowds the stroke and looks wrong even though the numbers are "right." On any padding side that sits against a stroked edge, use `padding + strokeThickness` instead of the bare `padding`. Compute the sum at render time from `theme.padding` and `theme.strokeThickness` (don't hardcode the total) so a live theme edit in the UI Labs Theme story propagates. The same idea applies to any inset that abuts a visible border — list spacing next to a stroked container, badges sitting flush against a panel edge, etc. See `src/shared/ui/Window.luau:67` for the canonical pattern.
+
+**Center new feature UIs by default; off-center is reserved for large content surfaces.** When you mount a new feature UI — a popup, prompt, settings panel, HUD widget, notification, confirmation dialog, small window — anchor it at screen center (`AnchorPoint = Vector2.new(0.5, 0.5)`, `Position = UDim2.fromScale(0.5, 0.5)`) and let its content stack centered inside it (`HorizontalAlignment = Center`, and `VerticalAlignment` where applicable). Off-center, edge-anchored, or asymmetric layouts are for *large* surfaces where centering wastes screen real estate and the UI is meant to dominate the view: full inventories, shops, leaderboards, codex/collection grids. Persistent navigation chrome (e.g. Sidebar) is its own category and isn't covered by this rule. If you're unsure which bucket a UI falls in, default to centered — the user will redirect for the rare large-screen exception.
+
+**Flatten control flow; avoid nesting when you can.** Prefer early returns, guard clauses, and `continue` over pyramids of `if`/`else`. Handle the unhappy path first and bail (`if not player then return end`), then let the happy path live unindented at the bottom of the function. Same for loops — `if not match then continue end` beats wrapping the body in another `if`. Aim to keep working code at one or two levels of indentation; if you're at three-plus, that's a signal to invert a condition, extract a helper, or split the function. This applies to Luau, React render bodies (extract a sub-component instead of nesting ternaries), and Lune scripts alike.
+
+**Ship a UI Labs story with every UI you make.** Any new React component — a shared primitive in `src/shared/ui/` or a feature-level UI in `src/features/<Name>/` — gets a sibling `<Component>.story.luau` that the UI Labs Studio plugin auto-discovers. The user iterates on visuals through UI Labs, so a UI without a story is incomplete. Use `UILabs.Choose` / `UILabs.Slider` etc. for interactive controls; see existing stories under `src/shared/ui/` for the pattern, and `docs/reference.md` § "UI Labs stories" for the API.
+
+**Commit confirmed wins immediately, then ask about pushing.** This project overrides the default "wait for explicit ask before committing." When a bug is fixed or a feature is added and the user confirms it works — or clearly implies it ("perfect", "yep", "nice", moving straight to the next task) — create a commit right then for that unit of work, then ask whether to push. One working change = one commit; don't let unrelated wins pile up under a single message. Still no committing speculatively (before any confirmation) and no pushing without asking.
+
+## Documentation discipline
+
+- When you add or significantly change a feature, write/update a doc at `docs/game/<Feature>.md` — what it does, the Studio assets it expects, the packets it speaks, the constants worth knowing.
+- Keep `docs/game/` organized: one file per feature; add an `index.md` if it grows past ~8 files.
+- If this `CLAUDE.md` or anything under `docs/` drifts out of sync with the code, fix the doc as part of the same change. A stale instruction is worse than no instruction — if you notice drift while working on something else, update it.

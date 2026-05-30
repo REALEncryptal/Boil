@@ -5,6 +5,12 @@
 -- *.ui.luau     -> build/shared/<Feature>/<name>.luau  (suffix stripped)
 -- everything else (init.luau, plain *.luau) -> build/shared/<Feature>/<same-name>
 -- Run: `lune run tools/split` (one-shot) or `lune run tools/split -- --watch`
+--
+-- The build is incremental: only changed files are written, stale files are
+-- deleted in place, and the three realm dirs are never removed. The previous
+-- "rm -rf build && recreate" pattern would cause Rojo's file watcher to miss
+-- newly-added feature folders, requiring a `rojo serve` restart on every new
+-- feature.
 
 local fs = require("@lune/fs")
 local process = require("@lune/process")
@@ -12,11 +18,17 @@ local task = require("@lune/task")
 
 local SRC = "src/features"
 local BUILD = "build"
+local REALMS = { "shared", "server", "client" }
 
 local function ensureDir(path: string)
-	if not fs.isDir(path) then
-		fs.writeDir(path)
+	if fs.isDir(path) then
+		return
 	end
+	local parent = string.match(path, "^(.*)/[^/]+$")
+	if parent and parent ~= "" and not fs.isDir(parent) then
+		ensureDir(parent)
+	end
+	fs.writeDir(path)
 end
 
 local function classify(filename: string): (string, string)
@@ -31,42 +43,111 @@ local function classify(filename: string): (string, string)
 	end
 end
 
-local function copyFeature(featureName: string)
-	local srcDir = `{SRC}/{featureName}`
-	for _, entry in fs.readDir(srcDir) do
-		local srcPath = `{srcDir}/{entry}`
-		if fs.isFile(srcPath) and string.match(entry, "%.luau$") then
-			local realm, outName = classify(entry)
-			local outDir = `{BUILD}/{realm}/{featureName}`
-			ensureDir(outDir)
-			fs.writeFile(`{outDir}/{outName}`, fs.readFile(srcPath))
+-- Returns { [path] = true } for every file under root.
+local function listAllFiles(root: string): { [string]: boolean }
+	local set: { [string]: boolean } = {}
+	if not fs.isDir(root) then
+		return set
+	end
+	local function recurse(dir: string)
+		for _, entry in fs.readDir(dir) do
+			local p = `{dir}/{entry}`
+			if fs.isFile(p) then
+				set[p] = true
+			elseif fs.isDir(p) then
+				recurse(p)
+			end
 		end
 	end
+	recurse(root)
+	return set
+end
+
+-- Returns directories under root in post-order (deepest first), so an empty-dir
+-- sweep can clean leaves before their parents.
+local function listAllDirs(root: string): { string }
+	local out: { string } = {}
+	if not fs.isDir(root) then
+		return out
+	end
+	local function recurse(dir: string)
+		for _, entry in fs.readDir(dir) do
+			local p = `{dir}/{entry}`
+			if fs.isDir(p) then
+				recurse(p)
+				table.insert(out, p)
+			end
+		end
+	end
+	recurse(root)
+	return out
 end
 
 local function build()
-	if fs.isDir(BUILD) then
-		fs.removeDir(BUILD)
-	end
-	ensureDir(BUILD)
-	ensureDir(`{BUILD}/shared`)
-	ensureDir(`{BUILD}/server`)
-	ensureDir(`{BUILD}/client`)
-
-	if not fs.isDir(SRC) then
-		print(`[split] {SRC} does not exist; wrote empty build/`)
-		return
-	end
-
-	local count = 0
-	for _, feature in fs.readDir(SRC) do
-		local featurePath = `{SRC}/{feature}`
-		if fs.isDir(featurePath) then
-			copyFeature(feature)
-			count += 1
+	-- 1. Compute the target file set: { [outPath] = sourceContent }.
+	local target: { [string]: string } = {}
+	local featureCount = 0
+	if fs.isDir(SRC) then
+		for _, feature in fs.readDir(SRC) do
+			local featureDir = `{SRC}/{feature}`
+			if fs.isDir(featureDir) then
+				featureCount += 1
+				for _, entry in fs.readDir(featureDir) do
+					local srcPath = `{featureDir}/{entry}`
+					if fs.isFile(srcPath) and string.match(entry, "%.luau$") then
+						local realm, outName = classify(entry)
+						local outPath = `{BUILD}/{realm}/{feature}/{outName}`
+						target[outPath] = fs.readFile(srcPath)
+					end
+				end
+			end
 		end
 	end
-	print(`[split] built {count} feature(s) into {BUILD}/`)
+
+	-- 2. Ensure realm dirs exist; Rojo's $path entries point at these.
+	ensureDir(BUILD)
+	for _, realm in REALMS do
+		ensureDir(`{BUILD}/{realm}`)
+	end
+
+	-- 3. Delete files that should no longer exist.
+	for path in listAllFiles(BUILD) do
+		if not target[path] then
+			fs.removeFile(path)
+		end
+	end
+
+	-- 4. Write target files; skip unchanged content so mtimes don't churn.
+	for path, content in target do
+		local parent = string.match(path, "^(.*)/[^/]+$")
+		if parent then
+			ensureDir(parent)
+		end
+		local current
+		if fs.isFile(path) then
+			current = fs.readFile(path)
+		end
+		if current ~= content then
+			fs.writeFile(path, content)
+		end
+	end
+
+	-- 5. Sweep empty feature dirs (post-order). Never remove the realm dirs.
+	local protected: { [string]: boolean } = { [BUILD] = true }
+	for _, realm in REALMS do
+		protected[`{BUILD}/{realm}`] = true
+	end
+	for _, dir in listAllDirs(BUILD) do
+		if not protected[dir] and #fs.readDir(dir) == 0 then
+			fs.removeDir(dir)
+		end
+	end
+
+	if not fs.isDir(SRC) then
+		print(`[split] {SRC} does not exist; built 0 feature(s) into {BUILD}/`)
+	else
+		print(`[split] built {featureCount} feature(s) into {BUILD}/`)
+	end
 end
 
 -- naive snapshot: map of path -> modifiedAt (unix seconds)
