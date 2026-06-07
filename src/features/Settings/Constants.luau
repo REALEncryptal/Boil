@@ -14,4 +14,17 @@ return {
 	-- How long the highlighted row lingers after Settings.linkTo(id) before
 	-- the focus state clears on its own.
 	LINK_HIGHLIGHT_SECONDS = 1.6,
+
+	-- Which presentations are active. Settings ships a screen (HUD window) and a
+	-- world surface: parts tagged `SettingsToggleStation` whose ProximityPrompt
+	-- flips the setting named by the part's `SettingId` attribute.
+	Presentations = {
+		screen = true,
+		world = true,
+	},
+
+	-- CollectionService tag a part must carry to become a Settings toggle
+	-- station, plus the attribute that names which setting it flips.
+	WORLD_TAG = "SettingsToggleStation",
+	WORLD_SETTING_ATTRIBUTE = "SettingId",
 }

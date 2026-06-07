@@ -8,16 +8,18 @@
 -- the Sidebar item and its corresponding Frame, so adding a window is a
 -- one-line change.
 --
--- The caller supplies real window contents via the `frameContents` prop —
--- a map keyed by entry id to a React element. Any entry without a supplied
--- content falls back to a row of placeholder labels (handy for entries that
--- don't have a real implementation yet, and for the UI Labs preview).
+-- Window contents come from the UIRegistry by default — each feature registers
+-- its own window content via a *Presentation module, so the HUD names no
+-- feature. The `frameContents` prop still overrides the registry (used by the
+-- UI Labs preview to inject placeholders). Any entry without content — from
+-- either source — falls back to a row of placeholder labels.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Features = ReplicatedStorage:WaitForChild("Features")
 
 local React = require(ReplicatedStorage.Packages.React)
 local ui = require(ReplicatedStorage.Shared.ui)
+local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
 local UIShell = require(Features:WaitForChild("UIShell"))
 local Sidebar = require(Features:WaitForChild("Sidebar"))
 
@@ -67,7 +69,7 @@ type Props = {
 
 return function(props: Props)
 	local frames = UIShell.useFrame()
-	local frameContents = props.frameContents
+	local frameContents = props.frameContents or UIRegistry.getScreens()
 
 	-- Build the Sidebar items list. One entry → one item + one Frame.
 	local sidebarItems: { Sidebar.Item } = {}
