@@ -6,6 +6,7 @@ local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local Loader = require(ReplicatedStorage.Packages.Loader)
 local ReplicaController = require(ReplicatedStorage.Packages.ReplicaService)
 local LoadOrdered = require(ReplicatedStorage.Shared.utils.LoadOrdered)
+local ui = require(ReplicatedStorage.Shared.ui)
 
 local Features = ReplicatedStorage:WaitForChild("Features")
 local HealthSystem = require(Features:WaitForChild("HealthSystem"))
@@ -33,19 +34,23 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
 local root = ReactRoblox.createRoot(screen)
-root:render(React.createElement(UIShell.FrameProvider, {}, {
-	Root = React.createElement("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-	}, {
-		Health = React.createElement(HealthSystem.UI, { hp = 100 }),
-		HUD = React.createElement(UIShowcase.HUD, {
-			-- Wire feature-owned frame contents into the HUD's window slots.
-			-- Any id not provided here falls back to placeholder rows.
-			frameContents = {
-				[Notes.FRAME_ID] = React.createElement(NotesView),
-				[Settings.FRAME_ID] = React.createElement(SettingsView),
-			},
+-- SkinProvider sits at the very top so every primitive below resolves the same
+-- active skin. Swap "gem" → "flat" (or any future skin) to re-skin the whole UI.
+root:render(React.createElement(ui.SkinProvider, { skin = "gem" }, {
+	App = React.createElement(UIShell.FrameProvider, {}, {
+		Root = React.createElement("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+		}, {
+			Health = React.createElement(HealthSystem.UI, { hp = 100 }),
+			HUD = React.createElement(UIShowcase.HUD, {
+				-- Wire feature-owned frame contents into the HUD's window slots.
+				-- Any id not provided here falls back to placeholder rows.
+				frameContents = {
+					[Notes.FRAME_ID] = React.createElement(NotesView),
+					[Settings.FRAME_ID] = React.createElement(SettingsView),
+				},
+			}),
 		}),
 	}),
 }))
