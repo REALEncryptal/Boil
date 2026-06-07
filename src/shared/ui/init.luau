@@ -60,6 +60,14 @@ ui.Window = semantic("Window")
 ui.Text = semantic("Text")
 ui.GemBackground = semantic("GemBackground")
 
+-- Layout primitives (seam #2): transparent, structure-only. Not skin-resolved —
+-- they have no visuals, just UI*Layout / padding / sizing. Compose screens with
+-- these; put skinned primitives inside them.
+ui.Stack = require(script.Stack)
+ui.Row = require(script.Row)
+ui.Grid = require(script.Grid)
+ui.Slot = require(script.Slot)
+
 -- Skin-agnostic behavior hooks.
 ui.useHoverScale = require(script.useHoverScale)
 ui.useTweenedScale = require(script.useTweenedScale)
