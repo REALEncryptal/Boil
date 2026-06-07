@@ -49,6 +49,14 @@ lune run tools/split -- --watch  # rebuild when files under src/features/ change
 
 Non-`.luau` files in feature folders are ignored.
 
+## View lint (tools/check-views.luau)
+
+```bash
+lune run tools/check-views       # exits non-zero on a logic leak in a view
+```
+
+Scans every `*.ui.luau` and `*View*.luau` under `src/features/` for forbidden patterns (`Packets`, `ByteNet`, `.send(` / `.listen(`, `PlayerDataService`, `ProfileStore`) and fails if any appear. Enforces the headless-core rule: views read state and call intent actions only — networking/validation/persistence live in the Controller/Service. The splitter doesn't typecheck Luau and Studio is the only runtime, so run this as the cheap pre-Studio signal. See [headless-core.md](game/headless-core.md).
+
 ## Loader (sleitnick/loader)
 
 | API                          | Usage                                                    |
@@ -87,7 +95,7 @@ Sorts in place by each module's `.Priority` field (ascending). Modules where `.P
 
 ## Shared UI primitives (src/shared/ui/)
 
-Gem-styled React components shared across features. Mirror the Studio template at `src/features/UIShowcase/` — if a visual diverges, re-export the artwork and bump IDs in `assets.luau`.
+React components shared across features. Each `ui.X` is **skin-resolved**: it reads the active skin from `SkinProvider` context and renders that skin's implementation, defaulting to the **gem** skin when no provider is mounted. The prop shapes are the *contract* (`ui.contract`); skins implement them. See [skin-contract.md](game/skin-contract.md) for the full seam — what follows describes the gem look (skin #1).
 
 ```lua
 local ui = require(ReplicatedStorage.Shared.ui)
@@ -163,6 +171,42 @@ Three lower-level pieces are also exported and reusable when building new gem-st
 - `ui.Text` — TextLabel using the gem display font. `shadow = true` opts into the two-layer drop-shadow (black shadow + white foreground offset by `-2px`, each with a Miter UIStroke) that Button and Badge use internally. Default is a plain single-layer label — use that for cleaner non-gem surfaces (e.g. the Sidebar's labels).
 - `ui.GemBackground` — the noise-tiled gradient Frame with the inner-glow stroke, black miter outline, and an optional `hasShine` shine stroke. Used internally by Button (`hasShine = true`) and Badge.
 - `ui.Window` — full window layout: dark glass Panel + top bar (optional Badge title + optional close Button) + scrollable content area. Children passed in are mounted directly into the scroll body. Use for any new feature window — see `src/features/UIShowcase/UIShowcase.ui.luau` for the call pattern.
+
+### Skin seam (`ui.SkinProvider` / `ui.useSkin` / `ui.contract`)
+
+`ui.X` primitives resolve their look from the active skin in React context. Wrap a subtree to swap; default (no provider) is gem.
+
+```lua
+local ui = require(ReplicatedStorage.Shared.ui)
+
+React.createElement(ui.SkinProvider, { skin = "flat" }, { App = … })  -- gem | flat
+local skin = ui.useSkin()        -- { name, theme, components }
+ui.skins                          -- { gem = …, flat = … }
+ui.contract                       -- typed prop shapes (ButtonProps, WindowProps, …)
+```
+
+- **gem** — the polished look (skin #1); its implementations are the files in `src/shared/ui/`.
+- **flat** — a debug skin of plain gray boxes with accent borders (`src/shared/ui/skins/flat/`), verifiable by eye.
+- Tokens live under each skin (`ui.useSkin().theme`); `ui.theme` is the gem/default token table.
+- `variant` is per-skin. Author a new skin per [skin-contract.md](game/skin-contract.md); flip skins live in the `SkinProvider` story.
+
+### Layout primitives (`ui.Stack` / `ui.Row` / `ui.Grid` / `ui.Slot`)
+
+Transparent, structure-only — they wrap `UI*Layout` / padding / sizing and draw nothing. **Not** skin-resolved. Put skinned primitives inside them. Default surface for arranging a screen in code; see [layout-surfaces.md](game/layout-surfaces.md).
+
+```lua
+React.createElement(ui.Stack, { gap = 12, padding = 10, fillHorizontal = true }, {
+    A = React.createElement(ui.Button, { variant = "red", text = "One", layoutOrder = 1 }),
+    B = React.createElement(ui.Button, { variant = "blue", text = "Two", layoutOrder = 2 }),
+})
+```
+
+| Primitive | Wraps | Notes |
+| --------- | ----- | ----- |
+| `ui.Stack` | UIListLayout (vertical) | gap, padding, alignment, flex |
+| `ui.Row` | Stack (horizontal) | forwards to Stack with `direction = "horizontal"` |
+| `ui.Grid` | UIGridLayout | cell size/padding, columns; children are **direct** cells |
+| `ui.Slot` | named transparent Frame | a positioned region; future portal-bridge target |
 
 ### Importing from Studio (`src/shared/dev/Inspect`)
 
@@ -258,7 +302,18 @@ The defaults live in `DEFAULT_SOUNDS` at the top of `src/shared/ui/useHoverScale
 Synced to `ServerScriptService.Server` as a `Script`. Runs once at server start. Loads and starts every service under `ServerScriptService.Features`.
 
 ### `src/client/init.client.luau`
-Synced to `StarterPlayerScripts.Client` as a `LocalScript`. Runs once per player join. Mounts the root React app, then loads and starts every controller under `StarterPlayerScripts.Features`.
+Synced to `StarterPlayerScripts.Client` as a `LocalScript`. Runs once per player join. Auto-requires every feature, discovers + requires `*Presentation` / `*WorldInteraction` modules (which self-register into `UIRegistry`), mounts the root React app (`SkinProvider → FrameProvider → Frame(UIRegistry.getRoots())`), then loads + starts every controller and requests replicas. Names no content feature — see [presentations.md](game/presentations.md) and [UIRegistry](#uiregistry-srcsharedutilsuiregistryluau).
+
+## UIRegistry (src/shared/utils/UIRegistry.luau)
+
+Client-side registries presentations register themselves into, so the entry file names no feature.
+
+| API | Usage |
+| --- | ----- |
+| `UIRegistry.registerRoot(name, element)` / `getRoots()` | Always-mounted top-level UI (HUD host, Health widget). |
+| `UIRegistry.registerScreen(frameId, element)` / `getScreens()` | HUD window contents keyed by UIShell frame id. |
+
+A feature opts in with a `*Presentation.client.luau` that registers at load; `init.client.luau` requires those before mounting. See [presentations.md](game/presentations.md).
 
 ## Rojo sync map (default.project.json)
 

@@ -80,10 +80,18 @@ Loader.SpawnAll(LoadOrdered(modules), "Start")
 1. `Loader.LoadDescendants(root, Loader.MatchesName("Service$"))` walks the Features tree, `require`s only ModuleScripts whose name ends in `Service` (client side uses `Controller$`), and returns the list of returned values. The name filter skips React components, view containers, and other non-startable modules that happen to live under a feature folder.
 2. `LoadOrdered` sorts that list by each module's `.Priority` field (ascending; missing = last).
 3. `Loader.SpawnAll(list, "Start")` invokes `module.Start()` on each under `task.spawn`, so a slow `Start` doesn't block peers.
+4. Then `Loader.LoadDescendants(root, Loader.MatchesName("Command$"))` requires every server-realm presentation (Cmdr commands) for its self-registration side effect — no `Start`.
 
 ### Client (`src/client/init.client.luau`)
 
-Same loader pattern, plus mounts a root React app. See [Adding a Feature](adding-a-feature.md) for the controller convention.
+The client entry **names no content feature** — it discovers everything:
+
+1. **Auto-require every feature** (`Features:GetChildren()`, pcall'd) so each feature's load-time side effects run (the PlayerData / Settings auto-discovery loops). The only feature named explicitly is `UIShell`, whose `FrameProvider` is the structural shell that must wrap the tree.
+2. **Discover presentations** — `Loader.LoadDescendants(ClientFeatures, …)` requires every `*Presentation` / `*WorldInteraction` module **before** the root mounts, so they self-register into `UIRegistry` (roots + screen slots). See [presentations.md](game/presentations.md).
+3. **Mount** `SkinProvider → FrameProvider → Frame(UIRegistry.getRoots())`. The active skin resolves every `ui.*` primitive (see [skin-contract.md](game/skin-contract.md)).
+4. **Load + start controllers** (`Controller$`), then `ReplicaController.RequestData()` once listeners are wired.
+
+Result: adding a feature or a presentation needs **zero edits** to either entry file. See [Adding a Feature](adding-a-feature.md) for the conventions.
 
 ## Load ordering
 

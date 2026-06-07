@@ -50,6 +50,20 @@ Project conventions to consult:
 - `docs/adding-a-feature.md` — feature layout and load order
 - `CLAUDE.md` — Studio-vs-code split, error mapping, doc discipline
 
+## Step 3.5 — Skin awareness & the deferred skeleton/skin split
+
+The shared UI now sits behind a **skin seam** (see `docs/game/skin-contract.md`). When you scaffold a top-level primitive:
+
+- The gem implementations live in `src/shared/ui/` and are gathered into the **gem** skin (`src/shared/ui/skins/gem.luau`). A new gem primitive is added there the same as before, but its prop shape should match (or be added to) the **contract** in `src/shared/ui/contract.luau` — that's the single source of truth skins implement. `ui.X` is a thin semantic wrapper that resolves the active skin; you don't hand-write the wrapper, just the gem implementation + the contract type.
+- If you add a brand-new primitive, also give the **flat** skin (`src/shared/ui/skins/flat/`) a minimal gray-box implementation of the same contract, so the debug skin stays complete.
+
+**Deferred — the skeleton/skin split (seam #2).** The plan (`docs/game/layout-surfaces.md`) is to extend this skill so a hand-built Studio *hero screen* emits **two** artifacts instead of one:
+
+- a **layout skeleton** — hierarchy + sizes/positions/anchors + `UI*Layout`/padding + **named `Slot`s**, style-stripped (no colors/strokes/gradients), and
+- a **skin styling** dump — colors/strokes/gradients keyed by element name, which becomes gem-skin content.
+
+A `ReactRoblox.createPortal` bridge then renders skinned content into the skeleton's named `Slot`s. This pipeline is **not built yet** — when asked to import a hero screen, scaffold with the `Stack`/`Row`/`Grid`/`Slot` code primitives for now, and flag that the skeleton/skin extraction is the future path. Studio skeletons must be visually neutral or skin and skeleton fight over the look.
+
 ## Step 4 — Verify
 
 1. Run `lune run tools/split` and confirm it exits clean.
