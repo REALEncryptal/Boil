@@ -10,7 +10,7 @@ Opinionated Roblox boilerplate: **Rojo + Wally + React (jsdotlua)** in a **Featu
 | Sync          | Rojo 7 reading from `build/` (splitter output) + `src/`   |
 | Packages      | Wally; React + ReactRoblox (jsdotlua/react 17)            |
 | Data          | ProfileStore (server-realm) + ReplicaService              |
-| Networking    | sleitnick/net                                             |
+| Networking    | ffrostflame/bytenet (schema-defined, buffer-packed)       |
 | Admin console | evaera/cmdr with a username allowlist hook                |
 | Utilities     | sleitnick: loader, trove, signal                          |
 

@@ -55,7 +55,32 @@ Registry.Changed = Signal.new()
 local settings: { [string]: Setting } = {}
 local categories: { [string]: Category } = {}
 
+-- Once the shared auto-discovery pass finishes, the registry is sealed. Any
+-- later register* call is a realm-specific registration (server- or client-only
+-- code reaching in after load) — exactly the thing that would let the two
+-- realms' registries diverge and break server-side write validation. We turn
+-- that into a hard error at the call site rather than silent drift.
+local sealed = false
+
+function Registry.seal()
+	sealed = true
+end
+
+local function assertUnsealed(what: string, id: string)
+	if not sealed then
+		return
+	end
+	error(
+		`[Settings] {what} "{id}" registered after the registry was sealed. `
+			.. `Register only from shared code (a sibling Settings.luau picked up by `
+			.. `auto-discovery), never from server- or client-only code — otherwise the `
+			.. `two realms' registries diverge.`,
+		2
+	)
+end
+
 function Registry.registerSetting(def: Setting)
+	assertUnsealed("setting", def.id)
 	if settings[def.id] ~= nil then
 		warn(`[Settings] setting "{def.id}" already registered; overwriting`)
 	end
@@ -64,6 +89,7 @@ function Registry.registerSetting(def: Setting)
 end
 
 function Registry.registerCategory(def: Category)
+	assertUnsealed("category", def.id)
 	if categories[def.id] ~= nil then
 		warn(`[Settings] category "{def.id}" already registered; overwriting`)
 	end

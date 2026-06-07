@@ -60,6 +60,11 @@ do
 			warn(`[Settings] registration error in {mod:GetFullName()}: {err}`)
 		end
 	end
+
+	-- Discovery is the only sanctioned registration window. Seal so any later
+	-- register* call (from server- or client-only code) errors instead of
+	-- silently drifting the two realms' registries apart.
+	Settings.Registry.seal()
 end
 
 return Settings

@@ -15,6 +15,22 @@ PlayerData.Constants = require(script.Constants)
 
 local templateSlices: { [string]: any } = {}
 
+-- Recursively clone a value so each profile gets its own tables. Registered
+-- defaults may be mutable (Settings registers `{}`, a feature could register a
+-- nested table) — without this, every profile would share one table object and
+-- a mutation on one player's data would leak into the template and every other
+-- profile. Non-table values (strings, numbers, booleans) are returned as-is.
+local function deepCopy(value: any): any
+	if typeof(value) ~= "table" then
+		return value
+	end
+	local copy = {}
+	for k, v in value do
+		copy[k] = deepCopy(v)
+	end
+	return copy
+end
+
 function PlayerData.registerTemplate(key: string, default: any)
 	if templateSlices[key] ~= nil then
 		warn(
@@ -26,10 +42,14 @@ function PlayerData.registerTemplate(key: string, default: any)
 	templateSlices[key] = default
 end
 
+-- Returns a fresh deep copy of the merged template. Callers (ProfileStore.New,
+-- and anything that introspects defaults) get a private structure they can hand
+-- out per-profile without aliasing the registered slices. Registered defaults
+-- are therefore safe to be mutable.
 function PlayerData.getTemplate(): { [string]: any }
 	local merged = {}
 	for key, value in templateSlices do
-		merged[key] = value
+		merged[key] = deepCopy(value)
 	end
 	return merged
 end
