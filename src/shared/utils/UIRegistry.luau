@@ -16,6 +16,7 @@
 
 local roots: { [string]: any } = {}
 local screens: { [string]: any } = {}
+local providers: { any } = {}
 
 local UIRegistry = {}
 
@@ -46,6 +47,20 @@ end
 -- The map of frameId → element the HUD reads to fill its window slots.
 function UIRegistry.getScreens(): { [string]: any }
 	return table.clone(screens)
+end
+
+-- Register a top-level React provider component to wrap the whole client tree
+-- (e.g. a context provider like UIShell's FrameProvider). The root composes every
+-- registered provider around the root Frame, so the client entry names no feature
+-- — and with none registered the tree still mounts (the framework boots empty).
+-- Registration order = nesting order, first registered outermost.
+function UIRegistry.registerProvider(component: any)
+	table.insert(providers, component)
+end
+
+-- The list of registered providers, outermost first, for the root to compose.
+function UIRegistry.getProviders(): { any }
+	return table.clone(providers)
 end
 
 return UIRegistry

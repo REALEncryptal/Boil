@@ -6,10 +6,13 @@ feature you're touching.
 ## Conventions (cross-cutting)
 
 These describe the four seams the framework is built around — read the relevant
-one before changing UI or feature structure.
+one before changing UI or feature structure. [framework-boundary.md](framework-boundary.md)
+sits above them: what's framework vs. feature, the `Shared.Boil` contract, and the
+one-way dependency rule that keeps the framework updatable.
 
 | Doc | Seam | What it covers |
 | --- | ---- | -------------- |
+| [framework-boundary.md](framework-boundary.md) | — | Framework vs. feature, the `Boil` public surface, the no-naming-a-feature rule (enforced by `tools/check-framework-boundary`). |
 | [skin-contract.md](skin-contract.md) | #1 skin | The component contract, `SkinProvider`, gem + flat skins. How a primitive *looks*, swappably. |
 | [layout-surfaces.md](layout-surfaces.md) | #2 layout | `Stack`/`Row`/`Grid`/`Slot` code primitives + the deferred Studio-extract pipeline. How a screen is *arranged*. |
 | [headless-core.md](headless-core.md) | #3 view | Cores are presentation-agnostic; views are dumb; actions are intent. Enforced by `tools/check-views`. |

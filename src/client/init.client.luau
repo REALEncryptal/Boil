@@ -10,10 +10,6 @@ local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
 local ui = require(ReplicatedStorage.Shared.ui)
 
 local Features = ReplicatedStorage:WaitForChild("Features")
--- UIShell is the structural shell (the frame-state provider that must wrap the
--- whole tree). It's infrastructure, not content — every feature's UI is supplied
--- by presentations below, so this is the only feature the root file names.
-local UIShell = require(Features:WaitForChild("UIShell"))
 
 -- Auto-require every shared feature so its load-time side effects run (the
 -- PlayerData / Settings auto-discovery loops, etc.). Replaces the old hardcoded
@@ -54,18 +50,28 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
 local root = ReactRoblox.createRoot(screen)
+
+-- The root Frame's children are whatever presentations registered — the HUD host,
+-- the Health widget, etc. — so this file names no content feature.
+local rootFrame = React.createElement("Frame", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+}, UIRegistry.getRoots())
+
+-- Wrap the tree in every feature-registered provider (e.g. UIShell's
+-- FrameProvider, registered from a *Presentation above). First registered ends up
+-- outermost. With none registered the root still mounts — the framework boots with
+-- zero features — so this file names no feature here either.
+local app = rootFrame
+local providers = UIRegistry.getProviders()
+for i = #providers, 1, -1 do
+	app = React.createElement(providers[i], {}, { Child = app })
+end
+
 -- SkinProvider sits at the very top so every primitive below resolves the same
 -- active skin. Swap "gem" → "flat" (or any future skin) to re-skin the whole UI.
--- FrameProvider wraps the tree so frame open/close state is available. The root
--- Frame's children are whatever presentations registered — the HUD host, the
--- Health widget, etc. — so this file names no content feature.
 root:render(React.createElement(ui.SkinProvider, { skin = "gem" }, {
-	App = React.createElement(UIShell.FrameProvider, {}, {
-		Root = React.createElement("Frame", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-		}, UIRegistry.getRoots()),
-	}),
+	App = app,
 }))
 
 -- Load controllers, start them, THEN request replicas from the server.
