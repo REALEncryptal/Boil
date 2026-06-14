@@ -10,7 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
-local utils = require(ReplicatedStorage.Shared.utils)
+local Boil = require(ReplicatedStorage.Shared.Boil)
 
 local Constants = require(ReplicatedStorage.Features.Settings.Constants)
 local Registry = require(ReplicatedStorage.Features.Settings.Registry)
@@ -39,7 +39,7 @@ end
 
 return function()
 	local sections = useRegistrySections()
-	local values = utils.useReplica(PlayerDataController, Constants.PROFILE_KEY) or {}
+	local values = Boil.useReplica(PlayerDataController, Constants.PROFILE_KEY) or {}
 
 	local focusedId, setFocusedId = React.useState(nil :: string?)
 

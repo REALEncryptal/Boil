@@ -10,7 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
-local ui = require(ReplicatedStorage.Shared.ui)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
 local PickupFX = require(ReplicatedStorage.Features.PickupFX)
 local RocketCounter = require(script.Parent.RocketCounter)
 

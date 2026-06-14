@@ -20,7 +20,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local ui = require(ReplicatedStorage.Shared.ui)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
 local Constants = require(script.Parent.Constants)
 local FrameProvider = require(script.Parent.FrameProvider)
 local Types = require(script.Parent.Types)

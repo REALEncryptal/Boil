@@ -11,7 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local PickupFX = require(ReplicatedStorage.Features.PickupFX)
-local ui = require(ReplicatedStorage.Shared.ui)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
 
 local ROCKET_ICON = "rbxassetid://137349421699691"
 

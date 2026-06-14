@@ -9,7 +9,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local audio = require(ReplicatedStorage.Shared.audio)
+local audio = require(ReplicatedStorage.Shared.Boil).audio
 local Constants = require(ReplicatedStorage.Features.Music.Constants)
 
 -- Client-realm siblings (StarterPlayerScripts.Features tree).

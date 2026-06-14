@@ -15,7 +15,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local UILabs = require(ReplicatedStorage.Packages.UILabs)
 local PickupFX = require(ReplicatedStorage.Features.PickupFX)
-local ui = require(ReplicatedStorage.Shared.ui)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
 
 local ROCKET_ICON = "rbxassetid://137349421699691"
 local SPAWN_INSET = 0.2

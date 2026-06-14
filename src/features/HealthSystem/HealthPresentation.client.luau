@@ -5,7 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
+local UIRegistry = require(ReplicatedStorage.Shared.Boil).UIRegistry
 local HealthSystem = require(ReplicatedStorage.Features.HealthSystem)
 
 -- hp = 100 is the demo value the root previously passed inline; real health

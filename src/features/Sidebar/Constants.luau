@@ -6,7 +6,7 @@
 -- `Shared.ui.theme` so they track the rest of the gem-styled UI.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local theme = require(ReplicatedStorage.Shared.ui.theme)
+local theme = require(ReplicatedStorage.Shared.Boil).ui.theme
 
 return {
 	-- SidebarItem square size (pixels). The whole item is one icon — the

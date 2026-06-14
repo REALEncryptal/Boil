@@ -11,7 +11,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local ui = require(ReplicatedStorage.Shared.ui)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
 local Registry = require(script.Parent.Registry)
 
 -- Layout tokens. Mirror the look of the original UIShowcase demo so swapping

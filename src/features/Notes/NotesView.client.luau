@@ -4,7 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
-local utils = require(ReplicatedStorage.Shared.utils)
+local Boil = require(ReplicatedStorage.Shared.Boil)
 
 -- client-realm siblings resolved via the StarterPlayerScripts.Features tree
 local NotesController = require(script.Parent.NotesController)
@@ -12,7 +12,7 @@ local PlayerDataController = require(script.Parent.Parent.PlayerData.PlayerDataC
 local NotesUI = require(ReplicatedStorage.Features.Notes.NotesUI)
 
 return function()
-	local note = utils.useReplica(PlayerDataController, "Note") or ""
+	local note = Boil.useReplica(PlayerDataController, "Note") or ""
 
 	return React.createElement(NotesUI, {
 		note = note,

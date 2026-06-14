@@ -30,12 +30,15 @@ Boil.UIRegistry.registerScreen("Notes", element)
 local data = Boil.useReplica(...)
 ```
 
-`Boil` re-exports `ui`, `Loader`, `LoadOrdered`, `UIRegistry`, and `useReplica`.
-It deliberately does **not** export third-party Wally packages (React, ByteNet,
-ReplicaService — require those directly) or anything a feature owns. Because
-features bind to this surface instead of deep paths, the framework can refactor
-its internals freely; only this re-export has to stay stable. That's what turns a
-framework update into a version bump instead of a merge conflict.
+`Boil` exposes `ui`, `audio`, `Loader`, `LoadOrdered`, `UIRegistry`, and
+`useReplica`. Members load lazily on first access, so requiring `Boil` is cheap and
+realm-safe — a server Service that only touches `Boil.LoadOrdered` never pulls in
+the React UI kit behind `Boil.ui`. It deliberately does **not** export third-party
+Wally packages (React, ByteNet, ReplicaService — require those directly) or
+anything a feature owns. Because features bind to this surface instead of deep
+paths, the framework can refactor its internals freely; only this surface has to
+stay stable. That's what turns a framework update into a version bump instead of a
+merge conflict.
 
 ## The rule: the dependency arrow points one way
 
@@ -49,15 +52,19 @@ into* the framework, not the other way around.
 - Reaching a *named* child is a violation: `Features:WaitForChild("UIShell")`,
   `require(ReplicatedStorage.Features.Notes)`, `Features.Settings`.
 
-`tools/check-framework-boundary` enforces this — it scans the runtime framework
-realms and fails on any named-feature reference. Run it alongside `check-views`:
+`tools/check-framework-boundary` enforces the boundary **both ways**: it scans the
+runtime framework realms for any named-feature reference (this rule), *and* scans
+`src/features` to ensure features reach the framework only through `Shared.Boil` —
+a deep `require(ReplicatedStorage.Shared.ui)` from a feature fails it. Run it
+alongside `check-views`:
 
 ```
 lune run tools/check-framework-boundary
 ```
 
 (The build tools under `tools/` are generic Lune scripts that operate on the
-features *directory* by design, so they're out of scope for the lint.)
+features *directory* by design, so they're out of scope for the lint. A feature
+requiring its own modules under `ReplicatedStorage.Features.<Self>` is fine.)
 
 ### Worked example: how UIShell stays optional
 

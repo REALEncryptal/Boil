@@ -12,31 +12,65 @@
 -- framework paths (`Shared.ui.skins.gem`, `Shared.utils.LoadOrdered`, …). That
 -- lets the framework refactor its internals freely — only this surface has to
 -- stay stable — which is what makes "update the framework without touching the
--- features" a version bump instead of a merge. See docs/game/framework-boundary.md.
+-- features" a version bump instead of a merge. Enforced both ways by
+-- tools/check-framework-boundary. See docs/game/framework-boundary.md.
 --
 -- What belongs here: the framework's OWN modules (the UI kit, the load helpers,
--- the presentation registry, the replica hook). What does NOT: third-party Wally
--- packages (React, ByteNet, ReplicaService) — features require those directly —
--- and anything owned by a feature (PlayerData templates, Settings categories).
--- The framework ships with zero features; this surface names none.
+-- the presentation registry, the replica hook, the audio system). What does NOT:
+-- third-party Wally packages (React, ByteNet, ReplicaService — features require
+-- those directly) and anything owned by a feature (PlayerData templates, Settings
+-- categories). The framework ships with zero features; this surface names none.
+--
+-- Members load lazily on first access and cache, so requiring Boil is cheap and
+-- realm-safe: a server Service that only touches `Boil.LoadOrdered` never pulls in
+-- the React UI kit behind `Boil.ui`.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Boil = {}
+export type Boil = {
+	ui: typeof(require(ReplicatedStorage.Shared.ui)),
+	audio: typeof(require(ReplicatedStorage.Shared.audio)),
+	Loader: typeof(require(ReplicatedStorage.Packages.Loader)),
+	LoadOrdered: typeof(require(ReplicatedStorage.Shared.utils.LoadOrdered)),
+	UIRegistry: typeof(require(ReplicatedStorage.Shared.utils.UIRegistry)),
+	useReplica: typeof(require(ReplicatedStorage.Shared.utils.useReplica)),
+}
 
--- UI seam (skin / layout / primitives). See Shared.ui.
-Boil.ui = require(ReplicatedStorage.Shared.ui)
+-- Lazy loaders, resolved once and cached by the metatable below.
+local loaders: { [string]: () -> any } = {
+	ui = function()
+		return require(ReplicatedStorage.Shared.ui)
+	end,
+	audio = function()
+		return require(ReplicatedStorage.Shared.audio)
+	end,
+	Loader = function()
+		return require(ReplicatedStorage.Packages.Loader)
+	end,
+	LoadOrdered = function()
+		return require(ReplicatedStorage.Shared.utils.LoadOrdered)
+	end,
+	UIRegistry = function()
+		return require(ReplicatedStorage.Shared.utils.UIRegistry)
+	end,
+	useReplica = function()
+		return require(ReplicatedStorage.Shared.utils.useReplica)
+	end,
+}
 
--- Load orchestration. `Loader` is the third-party module loader the entry
--- scripts drive; `LoadOrdered` is the framework's dependency-order helper.
-Boil.Loader = require(ReplicatedStorage.Packages.Loader)
-Boil.LoadOrdered = require(ReplicatedStorage.Shared.utils.LoadOrdered)
+local cache: { [string]: any } = {}
 
--- Presentation registry — features register screens / roots / providers here so
--- the client entry names no feature.
-Boil.UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
+local Boil = setmetatable({}, {
+	__index = function(_, key: string): any
+		if cache[key] == nil then
+			local loader = loaders[key]
+			if not loader then
+				error(`[Boil] unknown member "{key}" — not part of the public surface`, 2)
+			end
+			cache[key] = loader()
+		end
+		return cache[key]
+	end,
+})
 
--- Replica state hook for views.
-Boil.useReplica = require(ReplicatedStorage.Shared.utils.useReplica)
-
-return Boil
+return (Boil :: any) :: Boil

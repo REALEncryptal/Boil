@@ -5,7 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
+local UIRegistry = require(ReplicatedStorage.Shared.Boil).UIRegistry
 local Settings = require(ReplicatedStorage.Features.Settings)
 local Constants = require(ReplicatedStorage.Features.Settings.Constants)
 

@@ -18,8 +18,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Features = ReplicatedStorage:WaitForChild("Features")
 
 local React = require(ReplicatedStorage.Packages.React)
-local ui = require(ReplicatedStorage.Shared.ui)
-local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
+local ui = require(ReplicatedStorage.Shared.Boil).ui
+local UIRegistry = require(ReplicatedStorage.Shared.Boil).UIRegistry
 local UIShell = require(Features:WaitForChild("UIShell"))
 local Sidebar = require(Features:WaitForChild("Sidebar"))
 

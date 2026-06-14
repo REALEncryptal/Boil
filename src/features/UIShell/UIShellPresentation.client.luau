@@ -9,7 +9,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local UIRegistry = require(ReplicatedStorage.Shared.utils.UIRegistry)
+local UIRegistry = require(ReplicatedStorage.Shared.Boil).UIRegistry
 local UIShell = require(ReplicatedStorage.Features:WaitForChild("UIShell"))
 
 UIRegistry.registerProvider(UIShell.FrameProvider)
