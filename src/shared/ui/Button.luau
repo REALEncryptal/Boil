@@ -24,8 +24,15 @@ type Props = {
 	anchorPoint: Vector2?,
 	layoutOrder: number?,
 	zIndex: number?,
+	-- Dims the button under a dark overlay and ignores clicks/hover.
+	disabled: boolean?,
 	onClick: (() -> ())?,
 }
+
+-- Semi-transparent black wash drawn over the gem (and its label) while
+-- disabled. Sits below the Trigger so the overlay never blocks the tree,
+-- only the look.
+local DISABLED_OVERLAY_TRANSPARENCY = 0.45
 
 return function(props: Props)
 	local variantKey = props.variant or "red"
@@ -34,6 +41,8 @@ return function(props: Props)
 	-- Rainbow palette only reads correctly when stops run horizontally.
 	local fillRotation = if variantKey == "rainbow" then 0 else 90
 	local glowRotation = if variantKey == "rainbow" then 0 else 90
+
+	local disabled = props.disabled == true
 
 	local hover = useHoverScale()
 
@@ -70,12 +79,22 @@ return function(props: Props)
 				Enum.FontStyle.Normal
 			),
 			ZIndex = 10,
-			[React.Event.MouseEnter] = hover.onEnter,
-			[React.Event.MouseLeave] = hover.onLeave,
-			[React.Event.MouseButton1Down] = hover.onPress,
-			[React.Event.MouseButton1Up] = hover.onRelease,
-			[React.Event.Activated] = props.onClick,
+			[React.Event.MouseEnter] = if disabled then nil else hover.onEnter,
+			[React.Event.MouseLeave] = if disabled then nil else hover.onLeave,
+			[React.Event.MouseButton1Down] = if disabled then nil else hover.onPress,
+			[React.Event.MouseButton1Up] = if disabled then nil else hover.onRelease,
+			[React.Event.Activated] = if disabled then nil else props.onClick,
 		}),
+
+		DisabledOverlay = if disabled
+			then React.createElement("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+				BackgroundTransparency = DISABLED_OVERLAY_TRANSPARENCY,
+				BorderSizePixel = 0,
+				ZIndex = 9,
+			})
+			else nil,
 
 		BackgroundDeco = React.createElement(GemBackground, {
 			fillGradient = variant.fill,

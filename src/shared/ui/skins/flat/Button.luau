@@ -9,8 +9,12 @@ local contract = require(ReplicatedStorage.Shared.ui.contract)
 local useHoverScale = require(ReplicatedStorage.Shared.ui.useHoverScale)
 local theme = require(script.Parent.theme)
 
+-- Same dim treatment as the gem skin: dark wash below the trigger.
+local DISABLED_OVERLAY_TRANSPARENCY = 0.45
+
 return function(props: contract.ButtonProps)
 	local accent = theme.accent(props.variant)
+	local disabled = props.disabled == true
 	local hover = useHoverScale()
 
 	return React.createElement("Frame", {
@@ -44,11 +48,23 @@ return function(props: contract.ButtonProps)
 			BackgroundTransparency = 1,
 			Text = "",
 			ZIndex = 10,
-			[React.Event.MouseEnter] = hover.onEnter,
-			[React.Event.MouseLeave] = hover.onLeave,
-			[React.Event.MouseButton1Down] = hover.onPress,
-			[React.Event.MouseButton1Up] = hover.onRelease,
-			[React.Event.Activated] = props.onClick,
+			[React.Event.MouseEnter] = if disabled then nil else hover.onEnter,
+			[React.Event.MouseLeave] = if disabled then nil else hover.onLeave,
+			[React.Event.MouseButton1Down] = if disabled then nil else hover.onPress,
+			[React.Event.MouseButton1Up] = if disabled then nil else hover.onRelease,
+			[React.Event.Activated] = if disabled then nil else props.onClick,
 		}),
+
+		DisabledOverlay = if disabled
+			then React.createElement("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+				BackgroundTransparency = DISABLED_OVERLAY_TRANSPARENCY,
+				BorderSizePixel = 0,
+				ZIndex = 9,
+			}, {
+				UICorner = React.createElement("UICorner", { CornerRadius = theme.cornerRadius }),
+			})
+			else nil,
 	})
 end

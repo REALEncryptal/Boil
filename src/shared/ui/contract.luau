@@ -41,6 +41,9 @@ export type ButtonProps = {
 	anchorPoint: Vector2?,
 	layoutOrder: number?,
 	zIndex: number?,
+	-- Disabled: the skin dims the button (e.g. a dark overlay) and ignores
+	-- clicks and hover feedback. `onClick` is never fired while disabled.
+	disabled: boolean?,
 	onClick: (() -> ())?,
 }
 
