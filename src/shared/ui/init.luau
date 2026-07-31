@@ -12,7 +12,8 @@
 -- The prop shapes every primitive speaks are the *contract* (`ui.contract`) —
 -- the keystone. Skins implement those shapes; `variant` and tokens are per-skin.
 --
--- Available skins live in `ui.skins` ({ gem, flat }). Wrap a subtree to swap:
+-- Available skins live in `ui.skins` — the built-in gem and flat plus anything
+-- installed under src/skins/ (`ui.skins.names()`). Wrap a subtree to swap:
 --   React.createElement(ui.SkinProvider, { skin = "flat" }, children)
 --
 -- `ui.theme` exposes the default (gem) token table — the single source of design
@@ -27,11 +28,14 @@ local React = require(ReplicatedStorage.Packages.React)
 
 local SkinProvider = require(script.SkinProvider)
 
--- Build a semantic component for `key`: render the active skin's implementation.
+-- Build a semantic component for `key`: render the active skin's implementation,
+-- falling back to gem's when the active skin doesn't implement the key (see
+-- skins.resolve — that's what keeps installed skins working across a contract
+-- addition instead of erroring on the first render).
 local function semantic(key: string)
 	return function(props)
 		local skin = SkinProvider.useSkin()
-		return React.createElement((skin.components :: any)[key], props)
+		return React.createElement(SkinProvider.skins.resolve(skin, key), props)
 	end
 end
 
@@ -41,6 +45,7 @@ local ui = {}
 ui.SkinProvider = SkinProvider.SkinProvider
 ui.useSkin = SkinProvider.useSkin
 ui.skins = SkinProvider.skins
+ui.registerSkin = SkinProvider.skins.register
 ui.contract = require(script.contract)
 
 -- Tokens + asset registry.

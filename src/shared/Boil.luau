@@ -27,6 +27,30 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- The one eager require on this surface. Luau can only re-export a type through a
+-- real local binding, and a skin author needs those types: `Shared.ui.contract` is
+-- a deep framework path the boundary lint (rightly) rejects, so without this a
+-- skin package would have no way to name the shapes it implements. Cheap enough to
+-- be harmless — contract.luau pulls in `assets` (a leaf table of asset IDs) and
+-- nothing else, so no React is loaded on a server that only wants LoadOrdered.
+local contract = require(ReplicatedStorage.Shared.ui.contract)
+
+-- Skin-authoring types, re-exported so a skin can say `local skin: Boil.Skin = …`.
+export type Skin = contract.Skin
+export type Components = contract.Components
+export type VariantKey = contract.VariantKey
+export type ButtonProps = contract.ButtonProps
+export type IconButtonProps = contract.IconButtonProps
+export type BadgeProps = contract.BadgeProps
+export type PanelProps = contract.PanelProps
+export type TextProps = contract.TextProps
+export type TextFieldProps = contract.TextFieldProps
+export type CheckboxProps = contract.CheckboxProps
+export type ProgressBarProps = contract.ProgressBarProps
+export type ScrollListProps = contract.ScrollListProps
+export type WindowProps = contract.WindowProps
+export type GemBackgroundProps = contract.GemBackgroundProps
+
 export type Boil = {
 	ui: typeof(require(ReplicatedStorage.Shared.ui)),
 	audio: typeof(require(ReplicatedStorage.Shared.audio)),

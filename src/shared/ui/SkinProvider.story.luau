@@ -6,6 +6,11 @@
 -- This is the verifiable proof of the swap: the gem skin is the polished look,
 -- the flat skin is plain gray boxes with accent borders, and the same prop set
 -- drives both.
+--
+-- The chooser is built from `ui.skins.names()` rather than a hardcoded list, so a
+-- skin installed into src/skins/ (see docs/registry.md) appears here on the next
+-- story reload — the registry discovers it lazily, which works in Studio edit mode
+-- where the client entry script never runs.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -71,7 +76,7 @@ return {
 	reactRoblox = ReactRoblox,
 
 	controls = {
-		skin = UILabs.Choose({ "gem", "flat" }),
+		skin = UILabs.Choose(ui.skins.names()),
 		variant = UILabs.Choose({ "red", "blue", "green", "purple", "yellow", "white", "rainbow" }),
 		progress = UILabs.Slider(0.6, 0, 1, 0.01),
 		checked = true,

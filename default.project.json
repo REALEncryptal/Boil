@@ -6,7 +6,8 @@
     "ReplicatedStorage": {
       "Packages":  { "$path": "Packages" },
       "Shared":    { "$path": "src/shared" },
-      "Features":  { "$path": "build/shared" }
+      "Features":  { "$path": "build/shared" },
+      "Skins":     { "$path": "src/skins" }
     },
 
     "ServerScriptService": {

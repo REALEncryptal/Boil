@@ -257,4 +257,17 @@ export type Skin = {
 	components: Components,
 }
 
-return {}
+-- Contract version — the skin API's compatibility number.
+--
+-- Installed skins declare the range they were built against (`contract = "^1"` in
+-- their boil.toml) and `tools/boil` refuses to install a skin that doesn't match.
+--
+--   * Adding a component key is a MINOR change: skins that predate it keep working
+--     via the per-key gem fallback in `skins.resolve`, degraded but not broken.
+--   * Changing an existing prop shape is a MAJOR change: bump the integer, because
+--     every published skin now renders the wrong thing.
+--
+-- See docs/registry.md.
+return {
+	VERSION = 1,
+}

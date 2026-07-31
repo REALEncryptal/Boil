@@ -23,7 +23,8 @@
 -- it through `Boil`, adding to that surface if it's genuinely missing.
 --
 -- Scope: direction 1 scans the runtime framework realms (Shared / client / server);
--- direction 2 scans src/features. The build tools under tools/ are generic Lune
+-- direction 2 scans the installable content dirs — src/features and src/skins, both
+-- of which `tools/boil` installs into. The build tools under tools/ are generic Lune
 -- scripts that operate on the features directory by design, so they're out of scope.
 -- See docs/game/framework-boundary.md.
 
@@ -31,7 +32,9 @@ local fs = require("@lune/fs")
 local process = require("@lune/process")
 
 local FRAMEWORK_DIRS = { "src/shared", "src/client", "src/server" }
-local FEATURE_DIR = "src/features"
+-- Installable content: features and skins alike consume the framework through
+-- Shared.Boil only. src/skins is where `boil add <skin>` lands (docs/registry.md).
+local CONTENT_DIRS = { "src/features", "src/skins" }
 
 -- The one Shared.* member features may require directly.
 local PUBLIC_SURFACE = "Boil"
@@ -117,7 +120,9 @@ end
 for _, dir in FRAMEWORK_DIRS do
 	walk(dir, scanFrameworkFile)
 end
-walk(FEATURE_DIR, scanFeatureFile)
+for _, dir in CONTENT_DIRS do
+	walk(dir, scanFeatureFile)
+end
 
 if violations > 0 then
 	print(`\n[check-framework-boundary] FAILED — {violations} boundary violation(s).`)

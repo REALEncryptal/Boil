@@ -11,6 +11,7 @@ lets an existing project pull a newer framework without re-merging its features.
 | ----- | -------- | ---- |
 | **Framework** | `src/shared/`, `src/client/`, `src/server/`, `tools/` | The mechanism: the UI kit + seams, the load helpers, the presentation registry, the splitter, the lints, the entry scripts. |
 | **Feature** | `src/features/<Name>/` | Content: one self-contained, removable unit. Everything else is built out of these. |
+| **Skin** | `src/skins/<Name>/` | Content: one look, implementing the component contract. Installed by `tools/boil`, discovered by the skin registry. |
 
 The splitter (`tools/split`) and `tools/check-views` only ever touch
 `src/features/`, so the physical boundary is already clean. A fresh framework is
@@ -31,7 +32,10 @@ local data = Boil.useReplica(...)
 ```
 
 `Boil` exposes `ui`, `audio`, `Loader`, `LoadOrdered`, `UIRegistry`, and
-`useReplica`. Members load lazily on first access, so requiring `Boil` is cheap and
+`useReplica`, plus the skin-authoring **types** (`Boil.Skin`, `Boil.Components`,
+`Boil.ButtonProps`, …) — a skin package has to name the shapes it implements, and
+`Shared.ui.contract` is a deep path this rule forbids. Members load lazily on
+first access, so requiring `Boil` is cheap and
 realm-safe — a server Service that only touches `Boil.LoadOrdered` never pulls in
 the React UI kit behind `Boil.ui`. It deliberately does **not** export third-party
 Wally packages (React, ByteNet, ReplicaService — require those directly) or
@@ -54,9 +58,10 @@ into* the framework, not the other way around.
 
 `tools/check-framework-boundary` enforces the boundary **both ways**: it scans the
 runtime framework realms for any named-feature reference (this rule), *and* scans
-`src/features` to ensure features reach the framework only through `Shared.Boil` —
-a deep `require(ReplicatedStorage.Shared.ui)` from a feature fails it. Run it
-alongside `check-views`:
+the installable content dirs — `src/features` and `src/skins` — to ensure they
+reach the framework only through `Shared.Boil`; a deep
+`require(ReplicatedStorage.Shared.ui)` from either fails it. Run it alongside
+`check-views`:
 
 ```
 lune run tools/check-framework-boundary

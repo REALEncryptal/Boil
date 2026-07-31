@@ -10,6 +10,10 @@
 --
 -- useSkin() falls back to the gem skin when no provider is mounted, so existing
 -- call sites and UI Labs stories work untouched.
+--
+-- `skin` is a plain string, resolved against the registry at render: the set of
+-- available skins is open (a game can install more — see docs/registry.md), so it
+-- can't be a closed union. An unknown name warns once and renders gem.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -17,7 +21,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local contract = require(script.Parent.contract)
 local skins = require(script.Parent.skins)
 
-export type SkinName = "gem" | "flat"
+export type SkinName = string
 
 local SkinContext = React.createContext(nil :: contract.Skin?)
 
@@ -27,15 +31,13 @@ type ProviderProps = {
 }
 
 local function SkinProvider(props: ProviderProps)
-	local name = props.skin or "gem"
-	local skin = (skins :: any)[name] or skins.gem
-	return React.createElement(SkinContext.Provider, { value = skin }, props.children)
+	return React.createElement(SkinContext.Provider, { value = skins.get(props.skin or "gem") }, props.children)
 end
 
 local function useSkin(): contract.Skin
 	local skin = React.useContext(SkinContext)
 	if skin == nil then
-		return skins.gem
+		return skins.get("gem")
 	end
 	return skin
 end
