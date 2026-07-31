@@ -1,0 +1,8 @@
+[project]
+name = "boil"
+boil = "0.1.0"
+
+[registries]
+default = "https://github.com/REALEncryptal/boil-index"
+
+[dependencies]

@@ -8,6 +8,7 @@ Roblox scaffold using **Rojo + Wally + React (jsdotlua)** in a **Feature-Sliced 
 - [Architecture](architecture.md) — why `build/` exists, how the splitter works, how entry scripts load modules, load ordering.
 - [Adding a Feature](adding-a-feature.md) — the workflow for creating a new feature and picking the right file suffixes.
 - [Reference](reference.md) — file-suffix rules, splitter CLI, `LoadOrdered` API, directory map.
+- [Registry](registry.md) — sharing features and skins between games: the package format, the index, and `tools/boil` (install, publish, explore).
 
 ## TL;DR
 

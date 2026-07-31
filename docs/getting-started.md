@@ -39,6 +39,19 @@ lune run tools/split        # generate build/ once
 rojo build -o Boil.rbxlx    # or --output Boil.rbxl
 ```
 
+## Adding features and skins from the registry
+
+```bash
+lune run tools/boil -- explore        # browse the index and install from the list
+lune run tools/boil -- add encryptal/shop
+lune run tools/boil -- install        # restore everything after a fresh clone
+```
+
+Features land in `src/features/<Name>/`, skins in `src/skins/<Name>/`, both
+vendored and committed. Run `wally install` afterwards if the install reported new
+Wally dependencies, and read the Studio setup notes it prints — assets are still
+yours to create. See [registry.md](registry.md).
+
 ## Verifying the scaffold
 
 Run a Play test. Expected output:

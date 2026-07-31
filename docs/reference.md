@@ -57,6 +57,36 @@ lune run tools/check-views       # exits non-zero on a logic leak in a view
 
 Scans every `*.ui.luau` and `*View*.luau` under `src/features/` for forbidden patterns (`Packets`, `ByteNet`, `.send(` / `.listen(`, `PlayerDataService`, `ProfileStore`) and fails if any appear. Enforces the headless-core rule: views read state and call intent actions only — networking/validation/persistence live in the Controller/Service. The splitter doesn't typecheck Luau and Studio is the only runtime, so run this as the cheap pre-Studio signal. See [headless-core.md](game/headless-core.md).
 
+## Skin lint (tools/check-skins.luau)
+
+```bash
+lune run tools/check-skins       # exits non-zero on an incomplete skin
+```
+
+Reads the component keys out of `contract.Components`, then checks every skin —
+the built-ins under `src/shared/ui/skins/` and anything installed under
+`src/skins/` — implements all of them. Installed skins are additionally checked
+for a `boil.toml` whose `contract` range covers the current `contract.VERSION`.
+
+At runtime a missing key falls back to gem's implementation rather than erroring,
+so this lint is what keeps "degraded" from becoming the normal state. See
+[skin-contract.md](game/skin-contract.md).
+
+## Package CLI (tools/boil/)
+
+```bash
+lune run tools/boil -- explore                    # browse and install
+lune run tools/boil -- add encryptal/shop         # install from the index
+lune run tools/boil -- add path:../my-skin        # install from a local folder
+lune run tools/boil -- list / outdated / update / doctor
+lune run tools/boil -- publish src/features/Shop
+```
+
+Installs features into `src/features/<Name>/` and skins into `src/skins/<Name>/`,
+vendored (committed) and tracked in `boil-lock.toml`. Full command list with
+`-- help`; the format, the index and the explorer are documented in
+[registry.md](registry.md).
+
 ## Loader (sleitnick/loader)
 
 | API                          | Usage                                                    |
@@ -179,16 +209,21 @@ Three lower-level pieces are also exported and reusable when building new gem-st
 ```lua
 local ui = require(ReplicatedStorage.Shared.ui)
 
-React.createElement(ui.SkinProvider, { skin = "flat" }, { App = … })  -- gem | flat
+React.createElement(ui.SkinProvider, { skin = "flat" }, { App = … })  -- gem | flat | installed
 local skin = ui.useSkin()        -- { name, theme, components }
-ui.skins                          -- { gem = …, flat = … }
-ui.contract                       -- typed prop shapes (ButtonProps, WindowProps, …)
+ui.skins.names()                  -- { "flat", "gem", … } — built-ins + installed
+ui.skins.get("gem")               -- resolve by name (unknown → warns, returns gem)
+ui.skins.gem                      -- same, by index
+ui.registerSkin(skin)             -- register one built at runtime
+ui.contract                       -- typed prop shapes (ButtonProps, WindowProps, …) + VERSION
 ```
 
 - **gem** — the polished look (skin #1); its implementations are the files in `src/shared/ui/`.
 - **flat** — a debug skin of plain gray boxes with accent borders (`src/shared/ui/skins/flat/`), verifiable by eye.
+- **installed** — anything under `src/skins/` (→ `ReplicatedStorage.Skins`), discovered lazily on first registry access. `boil add <skin>` puts them there; see [registry.md](registry.md).
 - Tokens live under each skin (`ui.useSkin().theme`); `ui.theme` is the gem/default token table.
-- `variant` is per-skin. Author a new skin per [skin-contract.md](game/skin-contract.md); flip skins live in the `SkinProvider` story.
+- `variant` is per-skin. Author a new skin per [skin-contract.md](game/skin-contract.md); flip skins live in the `SkinProvider` story, whose chooser is built from `ui.skins.names()`.
+- A component key a skin doesn't implement renders gem's and warns once, so growing the contract can't break a published skin. `lune run tools/check-skins` reports the gaps.
 
 ### Layout primitives (`ui.Stack` / `ui.Row` / `ui.Grid` / `ui.Slot`)
 
@@ -322,6 +357,7 @@ A feature opts in with a `*Presentation.client.luau` that registers at load; `in
 | `ReplicatedStorage.Packages`                     | `Packages/`        | Wally output (shared deps)                           |
 | `ServerScriptService.ServerPackages`             | `ServerPackages/`  | Wally output (server-only deps, e.g. ProfileStore)   |
 | `ReplicatedStorage.Shared`                       | `src/shared/`      | Cross-realm shared code (incl. `utils/`)             |
+| `ReplicatedStorage.Skins`                        | `src/skins/`       | Installed skins (no splitter — shared realm only)    |
 | `ReplicatedStorage.Features`                     | `build/shared/`    | Shared surface of each feature (`init`, UI, types)   |
 | `ServerScriptService.Server`                     | `src/server/`      | Server entry (`init.server.luau` → Script)           |
 | `ServerScriptService.Features`                   | `build/server/`    | Per-feature server modules (`*.server.luau` stripped)|
