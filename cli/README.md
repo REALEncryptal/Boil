@@ -7,6 +7,12 @@ publish Roblox features and skins from a git-backed index.
 npm install -g @encryptal/boil
 ```
 
+Start a game with it:
+
+```bash
+boil new my-game                  # scaffold a project from the framework
+```
+
 Then, from anywhere inside a Boil checkout:
 
 ```bash
@@ -23,6 +29,7 @@ permissions.
 
 | Command | Does |
 | ------- | ---- |
+| `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
 | `explore` | Interactive registry explorer. |
 | `search <term>` | Non-interactive index search — name + description match. |

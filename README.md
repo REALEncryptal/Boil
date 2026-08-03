@@ -50,6 +50,15 @@ Filename suffix → destination:
 
 ## Getting started
 
+Starting a new game? Scaffold one instead of cloning this repo:
+
+```bash
+npm install -g @encryptal/boil
+boil new my-game && cd my-game
+```
+
+Working in this checkout:
+
 ```bash
 rokit install                           # installs rojo, wally, lune
 wally install                           # populates Packages/ and ServerPackages/

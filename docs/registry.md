@@ -39,12 +39,26 @@ checkout that hasn't run `rokit install` yet.
 ### Starting a new project
 
 ```bash
-git clone https://github.com/REALEncryptal/Boil MyGame && cd MyGame
+npm i -g @encryptal/boil
+boil new my-game && cd my-game
 rokit install && wally install
 
 boil setup        # names the project, creates/connects the index, caches it
 boil explore      # browse and install
 ```
+
+`boil new` clones the framework, strips the parts that belong to *its* repo
+rather than to your game (the CLI itself, the framework's LICENSE, its lockfile),
+renames the project in `boil.toml` and `default.project.json`, writes a README
+for it, and makes the first commit. It asks whether you want the example features
+or an empty framework — the framework boots either way, which is the point of the
+[framework/feature boundary](game/framework-boundary.md).
+
+Non-interactive: `boil new my-game --starter --yes` (or `--empty`). Scaffold from
+a fork or a pinned release with `--template=<url>` / `--ref=<tag>`.
+
+The CLI is deliberately **not** copied into the new project — it's a tool you
+install once, not something every game vendors.
 
 `setup` is once per project. It creates the index repo on GitHub if it doesn't
 exist yet — see [Setting up](#setting-up-boil-setup) — and writes the URL into
@@ -342,6 +356,7 @@ it. One global install now serves every Boil project on the machine.
 
 | Command | Does |
 | ------- | ---- |
+| `new [name]` | Scaffold a new game from the framework template. |
 | `setup [url]` | Name the project, create/connect the index, cache it. See below. |
 | `explore` | **Interactive terminal explorer** (see below). |
 | `search <term>` | Non-interactive index search — name + description match. |

@@ -5,6 +5,19 @@
 - **Rokit** — toolchain manager. Install from <https://github.com/rojo-rbx/rokit>.
 - **Roblox Studio** with the Rojo plugin installed.
 
+## Starting from scratch
+
+If you're beginning a new game rather than working in this checkout:
+
+```bash
+npm install -g @encryptal/boil
+boil new my-game && cd my-game
+```
+
+It asks for a name and whether you want the example features, then scaffolds the
+framework, renames the project, and makes the first commit. Carry on with the
+one-time setup below.
+
 ## One-time setup
 
 ```bash

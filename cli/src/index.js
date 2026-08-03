@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import * as commands from "./commands.js";
 import * as explorer from "./explorer.js";
+import * as newProject from "./new.js";
 import * as project from "./project.js";
 import * as publish from "./publish.js";
 import * as setup from "./setup.js";
@@ -26,6 +27,7 @@ const USAGE = `boil — packages for Boil features and skins
   boil <command> [args] [flags]
 
 Set up
+  new [name]                  scaffold a new Boil game from the framework
   setup [index-url]           name the project and create/connect the index
                               (creates the GitHub repo via gh or GITHUB_TOKEN)
 
@@ -56,6 +58,9 @@ Flags
   --local                     setup: scaffold a plain directory, not a git repo
   --public                    setup: create the index repo public (default private)
   --skip-index                setup: only write the project manifest
+  --empty / --starter         new: framework only, or with the example features
+  --no-git                    new: skip git init
+  --template=<url> --ref=<t>  new: scaffold from a different repo or tag
   --version                   print the CLI version
 `;
 
@@ -66,7 +71,15 @@ function parse(argv) {
 
 	for (const argument of argv) {
 		if (argument.startsWith("--")) {
-			flags[argument.slice(2)] = true;
+			// `--flag` is boolean; `--key=value` carries a string (--template=…,
+			// --ref=…). Splitting on the first `=` keeps values containing one intact.
+			const body = argument.slice(2);
+			const equals = body.indexOf("=");
+			if (equals >= 0) {
+				flags[body.slice(0, equals)] = body.slice(equals + 1);
+			} else {
+				flags[body] = true;
+			}
 			continue;
 		}
 		if (!command) {
@@ -102,6 +115,16 @@ const NEEDS_PROJECT = new Set([
 ]);
 
 const HANDLERS = {
+	// `--empty` / `--starter` pick a template; leaving both off means "ask", which
+	// is why this is undefined rather than false when neither is given.
+	new: (parsed) =>
+		newProject.run(parsed.args, {
+			empty: parsed.flags.empty === true ? true : parsed.flags.starter === true ? false : undefined,
+			yes: parsed.flags.yes === true,
+			git: parsed.flags["no-git"] === true ? false : undefined,
+			template: typeof parsed.flags.template === "string" ? parsed.flags.template : undefined,
+			ref: typeof parsed.flags.ref === "string" ? parsed.flags.ref : undefined,
+		}),
 	setup: (parsed) =>
 		setup.run(parsed.args, {
 			localIndex: parsed.flags.local,
