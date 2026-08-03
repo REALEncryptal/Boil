@@ -357,6 +357,7 @@ it. One global install now serves every Boil project on the machine.
 | Command | Does |
 | ------- | ---- |
 | `new [name]` | Scaffold a new game from the framework template. |
+| `dev [project-file]` | Splitter (watch) + `rojo serve` in one terminal. `--port=`, `--address=`. |
 | `setup [url]` | Name the project, create/connect the index, cache it. See below. |
 | `explore` | **Interactive terminal explorer** (see below). |
 | `search <term>` | Non-interactive index search — name + description match. |

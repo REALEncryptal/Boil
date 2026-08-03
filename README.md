@@ -62,6 +62,12 @@ Working in this checkout:
 ```bash
 rokit install                           # installs rojo, wally, lune
 wally install                           # populates Packages/ and ServerPackages/
+boil dev                                # splitter (watch) + rojo serve together
+```
+
+Without the CLI, run the two halves yourself:
+
+```bash
 lune run tools/split -- --watch         # terminal 1: regenerate build/ on change
 rojo serve                              # terminal 2: sync to Studio
 ```

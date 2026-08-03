@@ -29,7 +29,16 @@ After `wally install`, `Packages/` will contain `React.lua`, `ReactRoblox.lua`, 
 
 ## Dev loop
 
-Two terminals:
+If you have the CLI installed, one command runs both halves:
+
+```bash
+boil dev                 # splitter (watch) + rojo serve, output prefixed
+boil dev --port=34872    # if the default Rojo port is taken
+```
+
+Ctrl-C stops both. `--no-split` / `--no-serve` run one half alone.
+
+Or do it by hand, in two terminals:
 
 ```bash
 # terminal 1 — regenerate build/ whenever a file under src/features/ changes
@@ -38,6 +47,9 @@ lune run tools/split -- --watch
 # terminal 2 — serve the Rojo project to Studio
 rojo serve
 ```
+
+Both halves matter: skip the splitter and Studio syncs a stale `build/`, so
+edits to `src/features/` appear to do nothing.
 
 Then in Roblox Studio:
 

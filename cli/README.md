@@ -16,6 +16,7 @@ boil new my-game                  # scaffold a project from the framework
 Then, from anywhere inside a Boil checkout:
 
 ```bash
+boil dev                          # splitter (watch) + rojo serve, one terminal
 boil explore                      # browse skins & features, install from the list
 boil add encryptal/shop           # install by name
 boil publish src/features/Shop    # lint, tag, push, register
@@ -30,6 +31,7 @@ permissions.
 | Command | Does |
 | ------- | ---- |
 | `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
+| `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
 | `explore` | Interactive registry explorer. |
 | `search <term>` | Non-interactive index search — name + description match. |

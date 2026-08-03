@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as commands from "./commands.js";
+import * as dev from "./dev.js";
 import * as explorer from "./explorer.js";
 import * as newProject from "./new.js";
 import * as project from "./project.js";
@@ -30,6 +31,10 @@ Set up
   new [name]                  scaffold a new Boil game from the framework
   setup [index-url]           name the project and create/connect the index
                               (creates the GitHub repo via gh or GITHUB_TOKEN)
+
+Develop
+  dev [project-file]          run the splitter (watch) and rojo serve together
+                              --port=34872 to change the Rojo port
 
 Browse
   explore                     interactive registry explorer
@@ -58,6 +63,8 @@ Flags
   --local                     setup: scaffold a plain directory, not a git repo
   --public                    setup: create the index repo public (default private)
   --skip-index                setup: only write the project manifest
+  --port=<n> --address=<a>    dev: Rojo serve options
+  --no-split / --no-serve     dev: run only one half of the loop
   --empty / --starter         new: framework only, or with the example features
   --no-git                    new: skip git init
   --template=<url> --ref=<t>  new: scaffold from a different repo or tag
@@ -103,6 +110,7 @@ function version() {
 // the point of installing this globally.
 const NEEDS_PROJECT = new Set([
 	"setup",
+	"dev",
 	"explore",
 	"add",
 	"remove",
@@ -131,6 +139,13 @@ const HANDLERS = {
 			private: !parsed.flags.public,
 			yes: parsed.flags.yes,
 			skipIndex: parsed.flags["skip-index"],
+		}),
+	dev: (parsed) =>
+		dev.run(parsed.args, {
+			port: parsed.flags.port,
+			address: typeof parsed.flags.address === "string" ? parsed.flags.address : undefined,
+			split: parsed.flags["no-split"] === true ? false : undefined,
+			serve: parsed.flags["no-serve"] === true ? false : undefined,
 		}),
 	explore: () => explorer.run(),
 	search: (parsed) => commands.search(parsed.args),
