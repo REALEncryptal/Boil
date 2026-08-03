@@ -72,19 +72,23 @@ At runtime a missing key falls back to gem's implementation rather than erroring
 so this lint is what keeps "degraded" from becoming the normal state. See
 [skin-contract.md](game/skin-contract.md).
 
-## Package CLI (tools/boil/)
+## Package CLI (`boil`)
 
 ```bash
-lune run tools/boil -- explore                    # browse and install
-lune run tools/boil -- add encryptal/shop         # install from the index
-lune run tools/boil -- add path:../my-skin        # install from a local folder
-lune run tools/boil -- list / outdated / update / doctor
-lune run tools/boil -- publish src/features/Shop
+npm install -g @encryptal/boil  # once per machine; source lives in cli/
+```
+
+```bash
+boil explore                    # browse and install
+boil add encryptal/shop         # install from the index
+boil add path:../my-skin        # install from a local folder
+boil list / outdated / update / doctor
+boil publish src/features/Shop
 ```
 
 Installs features into `src/features/<Name>/` and skins into `src/skins/<Name>/`,
 vendored (committed) and tracked in `boil-lock.toml`. Full command list with
-`-- help`; the format, the index and the explorer are documented in
+`boil help`; the format, the index and the explorer are documented in
 [registry.md](registry.md).
 
 ## Loader (sleitnick/loader)

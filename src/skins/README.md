@@ -24,7 +24,7 @@ without the client entry script ever running.
 Install one with:
 
 ```bash
-lune run tools/boil -- add <owner>/<skin>
+boil add <owner>/<skin>
 ```
 
 Or author your own — start from `src/shared/ui/skins/flat/`, the smallest

@@ -24,7 +24,7 @@
 --
 -- Scope: direction 1 scans the runtime framework realms (Shared / client / server);
 -- direction 2 scans the installable content dirs — src/features and src/skins, both
--- of which `tools/boil` installs into. The build tools under tools/ are generic Lune
+-- of which `boil` installs into. The build tools under tools/ are generic Lune
 -- scripts that operate on the features directory by design, so they're out of scope.
 -- See docs/game/framework-boundary.md.
 

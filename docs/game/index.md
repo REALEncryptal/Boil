@@ -19,7 +19,7 @@ one-way dependency rule that keeps the framework updatable.
 | [presentations.md](presentations.md) | #4 presentation | Self-registering screen / world / command surfaces and the de-hardcoded entry files. How a feature *shows up*. |
 
 Features and skins are also **distributable packages** — one folder, one
-`boil.toml`, installed and published with `tools/boil`. See
+`boil.toml`, installed and published with `boil`. See
 [registry.md](../registry.md).
 
 ## Features

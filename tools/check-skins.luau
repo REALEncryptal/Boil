@@ -118,7 +118,7 @@ end
 local function checkManifest(skin: Skin, contractVersion: number)
 	local path = `{skin.dir}/boil.toml`
 	if not fs.isFile(path) then
-		fail(skin.label, `installed skin has no boil.toml — run \`lune run tools/boil -- publish {skin.dir}\` to scaffold one`)
+		fail(skin.label, `installed skin has no boil.toml — run \`boil publish {skin.dir}\` to scaffold one`)
 		return
 	end
 

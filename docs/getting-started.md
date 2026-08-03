@@ -41,11 +41,18 @@ rojo build -o Boil.rbxlx    # or --output Boil.rbxl
 
 ## Adding features and skins from the registry
 
+The package CLI is an npm package, installed once per machine — not part of the
+Rokit toolchain:
+
 ```bash
-lune run tools/boil -- setup          # name the project, create/connect the index
-lune run tools/boil -- explore        # browse the index and install from the list
-lune run tools/boil -- add encryptal/shop
-lune run tools/boil -- install        # restore everything after a fresh clone
+npm install -g @encryptal/boil
+```
+
+```bash
+boil setup          # name the project, create/connect the index
+boil explore        # browse the index and install from the list
+boil add encryptal/shop
+boil install        # restore everything after a fresh clone
 ```
 
 `setup` is a one-time step per project — it creates the index repo on GitHub if

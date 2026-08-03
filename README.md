@@ -30,6 +30,7 @@ src/shared/utils/             cross-feature utilities (incl. LoadOrdered)
 
 tools/split.luau              Lune splitter (see docs/architecture.md)
 build/                        generated, gitignored — Rojo reads from here
+cli/                          the `boil` package CLI (npm, see docs/registry.md)
 ```
 
 Filename suffix → destination:
@@ -58,6 +59,14 @@ rojo serve                              # terminal 2: sync to Studio
 
 Then in Studio connect via the Rojo plugin. For ProfileStore persistence, enable **Game Settings → Security → Enable Studio Access to API Services**.
 
+To install features and skins from the registry, add the package CLI — it's an npm package, not part of the Rokit toolchain:
+
+```bash
+npm install -g @encryptal/boil
+boil explore                            # browse and install
+boil publish src/features/Shop          # share one you built
+```
+
 ## Load order
 
 Modules expose an optional `Priority` number (lower = earlier). The entry scripts sort via `src/shared/utils/LoadOrdered.luau` before calling `Start`. Used here so `PlayerDataService` (`Priority = 1`) starts before any service that reads player data.
@@ -72,3 +81,4 @@ The entry scripts use `Loader.MatchesName("Service$" | "Controller$")`, so only 
 - [docs/architecture.md](docs/architecture.md) — split model, entry flow, load ordering
 - [docs/adding-a-feature.md](docs/adding-a-feature.md) — feature workflow, priority bands, Constants pattern
 - [docs/reference.md](docs/reference.md) — package table, sync map, filename rules
+- [docs/registry.md](docs/registry.md) — sharing features and skins: the package format, the index, the `boil` CLI

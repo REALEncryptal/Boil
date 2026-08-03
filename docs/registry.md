@@ -2,26 +2,39 @@
 
 Boil is a framework plus a set of removable features. This document describes the
 infrastructure that turns "removable" into **distributable**: a package format, a
-registry, and a CLI (`tools/boil`) with a built-in terminal explorer for finding
-and installing packages.
+registry, and a CLI (`boil`) with a built-in terminal explorer for finding and
+installing packages.
 
 The goal is two commands:
 
 ```bash
-lune run tools/boil -- explore              # browse skins & features, install from the list
-lune run tools/boil -- publish src/features/Shop
+boil explore              # browse skins & features, install from the list
+boil publish src/features/Shop
 ```
 
 There is **no website**. The explorer lives in the CLI — the registry is a git
 repo of manifests, and browsing it is a terminal UI, not a browser tab.
 
-## Walkthrough
+## Installing the CLI
 
-Every command below assumes this alias:
+`boil` is an npm package, installed once per machine rather than per checkout:
 
 ```bash
-alias boil='lune run tools/boil --'
+npm install -g @encryptal/boil
 ```
+
+It has no runtime dependencies — TOML, semver and the prompts all ship inside
+it — and needs Node 18.17+ and `git` on your PATH. Commands that touch project
+files walk up from the current directory looking for `default.project.json`, so
+they work from anywhere inside a checkout; `search`, `info` and `refresh` only
+read the cached index and run anywhere at all.
+
+`lune` is optional but expected in a real project: `add`/`remove`/`update` run
+`tools/split` afterwards, and `publish` runs the repo's lints. Both degrade to a
+warning when the Lune toolchain isn't installed, so the CLI still works in a
+checkout that hasn't run `rokit install` yet.
+
+## Walkthrough
 
 ### Starting a new project
 
@@ -313,8 +326,19 @@ no upload endpoint to secure and no server to keep alive.
 ## The CLI
 
 ```
-lune run tools/boil -- <command>
+boil <command>
 ```
+
+The source is `cli/` in this repo, published to npm as `@encryptal/boil`. It's a
+zero-dependency Node package: the TOML parser, the semver subset and the prompts
+are all in `cli/src/`, so a global install pulls in nothing else and the CLI has
+no Roblox toolchain of its own to keep in sync. `cd cli && npm test` runs its
+suite.
+
+Why npm rather than a Lune script in `tools/`: the CLI is the thing you reach for
+*before* a project exists — to browse the index, to install into a checkout you
+just cloned — and a per-repo script can only ever run in a repo that already has
+it. One global install now serves every Boil project on the machine.
 
 | Command | Does |
 | ------- | ---- |
@@ -339,9 +363,9 @@ The index is a git repo that has to exist before anything can be published to it
 `setup` creates it for you rather than making that a manual checklist:
 
 ```bash
-lune run tools/boil -- setup                    # asks, defaults to <your-org>/boil-index
-lune run tools/boil -- setup https://github.com/me/boil-index --yes
-lune run tools/boil -- setup ../boil-index --local    # a plain directory, no git
+boil setup                    # asks, defaults to <your-org>/boil-index
+boil setup https://github.com/me/boil-index --yes
+boil setup ../boil-index --local    # a plain directory, no git
 ```
 
 It names the project, then makes sure the index exists — creating the GitHub repo
@@ -360,8 +384,8 @@ writes just the project manifest.
 
 ### The explorer
 
-`boil explore` is the front end. It is a terminal UI built on Lune's
-`stdio.prompt`, and it's the reason there's no website:
+`boil explore` is the front end. It is a terminal UI — an arrow-key list drawn
+straight onto stdout — and it's the reason there's no website:
 
 ```
   Boil registry — 24 packages
@@ -395,7 +419,7 @@ Design rules:
 The flow that matters is "I built this in a real game, now I want it everywhere":
 
 ```bash
-lune run tools/boil -- publish src/features/Shop
+boil publish src/features/Shop
 ```
 
 1. Scaffold `boil.toml` if it's missing (prompts for name/description/version).
@@ -464,6 +488,10 @@ Run `lune run tools/check-skins` to see which contract keys you still owe.
   `boil-index` repo referenced by the default config doesn't exist yet — run
   `boil setup` to create it. Until then `add github:owner/repo` and
   `add path:<dir>` work with no index at all. ✅
+- **Phase 3 — distribution.** The CLI moved from a Lune script in `tools/boil/`
+  to an npm package (`cli/`, published as `@encryptal/boil`), installed globally
+  and runnable from anywhere inside a checkout. Same commands, same file formats,
+  same lockfiles — `lune run tools/boil -- <cmd>` is now just `boil <cmd>`. ✅
 
 A registry URL that resolves to a local directory is used in place rather than
 cloned, so you can develop against an index before publishing it anywhere:

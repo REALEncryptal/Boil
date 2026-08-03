@@ -260,7 +260,7 @@ export type Skin = {
 -- Contract version — the skin API's compatibility number.
 --
 -- Installed skins declare the range they were built against (`contract = "^1"` in
--- their boil.toml) and `tools/boil` refuses to install a skin that doesn't match.
+-- their boil.toml) and `boil` refuses to install a skin that doesn't match.
 --
 --   * Adding a component key is a MINOR change: skins that predate it keep working
 --     via the per-key gem fallback in `skins.resolve`, degraded but not broken.

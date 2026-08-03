@@ -76,8 +76,8 @@ without touching a framework file. (Discovery is lazy rather than driven by the
 client entry script precisely so it works in Studio edit mode, where that script
 never runs.)
 
-Skins are shareable packages — add a `boil.toml` and `lune run tools/boil --
-publish src/skins/<Name>` puts them in the index. See [registry.md](../registry.md).
+Skins are shareable packages — add a `boil.toml` and `boil publish
+src/skins/<Name>` puts them in the index. See [registry.md](../registry.md).
 
 The framework's own two skins still live in `src/shared/ui/skins/` (gem's
 implementations *are* the files in `src/shared/ui/`). Moving gem out to

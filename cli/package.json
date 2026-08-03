@@ -1,0 +1,41 @@
+{
+	"name": "@encryptal/boil",
+	"version": "0.1.0",
+	"description": "Package manager for Boil — install and publish Roblox features and skins from a git-backed index",
+	"type": "module",
+	"bin": {
+		"boil": "bin/boil.js"
+	},
+	"exports": {
+		".": "./src/index.js"
+	},
+	"files": [
+		"bin",
+		"src",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node --test test/*.test.js"
+	},
+	"engines": {
+		"node": ">=18.17"
+	},
+	"keywords": [
+		"roblox",
+		"rojo",
+		"wally",
+		"luau",
+		"package-manager",
+		"boil"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/REALEncryptal/Boil.git",
+		"directory": "cli"
+	},
+	"homepage": "https://github.com/REALEncryptal/Boil/blob/main/docs/registry.md",
+	"bugs": {
+		"url": "https://github.com/REALEncryptal/Boil/issues"
+	}
+}
