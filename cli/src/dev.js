@@ -9,8 +9,9 @@
 
 import { spawn, spawnSync } from "node:child_process";
 
+import * as project from "./project.js";
 import * as term from "./term.js";
-import { isFile } from "./util.js";
+import { isDir, isFile, trim } from "./util.js";
 
 export const DEFAULT_SPLIT = "tools/split";
 
@@ -27,7 +28,7 @@ export function parsePort(value) {
 
 // The processes `dev` will run. Pure, so the argv assembly is testable without
 // spawning anything.
-export function buildCommands({ port, address, project, split = true, serve = true } = {}) {
+export function buildCommands({ port, address, project: projectFile, split = true, serve = true } = {}) {
 	const commands = [];
 
 	if (split) {
@@ -40,8 +41,8 @@ export function buildCommands({ port, address, project, split = true, serve = tr
 
 	if (serve) {
 		const args = ["serve"];
-		if (project) {
-			args.push(project);
+		if (projectFile) {
+			args.push(projectFile);
 		}
 		if (port !== undefined) {
 			args.push("--port", String(port));
@@ -113,8 +114,29 @@ export async function run(args, options = {}) {
 	const paints = { split: term.cyan, rojo: term.green };
 
 	term.heading("boil dev");
+
 	for (const { label, command, args: argv } of commands) {
 		term.info(`${paints[label](label)}  ${command} ${argv.join(" ")}`);
+	}
+
+	// Build once, synchronously, before rojo starts.
+	//
+	// default.project.json points at build/shared, build/server and build/client.
+	// Those are generated and gitignored, so on a fresh clone they don't exist —
+	// and rojo reads its project file the moment it launches. Starting both at
+	// once is a race rojo loses: "$path could not be turned into a Roblox
+	// Instance". One synchronous build removes the race entirely; the watcher
+	// then takes over.
+	if (split) {
+		const first = project.runSplit();
+		if (first && !first.ok) {
+			term.fail(`the splitter failed, so there's nothing to serve:\n${trim(first.output)}`);
+		}
+		if (first) {
+			term.info(term.dim(trim(first.output).split("\n").pop() ?? "built once"));
+		}
+	} else if (serve && !isDir("build")) {
+		term.warn("build/ doesn't exist and --no-split was passed — rojo will fail until you run the splitter");
 	}
 	term.print("");
 	term.print(term.dim("Ctrl-C stops both."));

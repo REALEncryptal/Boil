@@ -1,6 +1,6 @@
 {
 	"name": "@encryptal/boil",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"description": "Package manager for Boil — install and publish Roblox features and skins from a git-backed index",
 	"type": "module",
 	"bin": {
