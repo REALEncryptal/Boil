@@ -15,6 +15,129 @@ lune run tools/boil -- publish src/features/Shop
 There is **no website**. The explorer lives in the CLI — the registry is a git
 repo of manifests, and browsing it is a terminal UI, not a browser tab.
 
+## Walkthrough
+
+Every command below assumes this alias:
+
+```bash
+alias boil='lune run tools/boil --'
+```
+
+### Starting a new project
+
+```bash
+git clone https://github.com/REALEncryptal/Boil MyGame && cd MyGame
+rokit install && wally install
+
+boil setup        # names the project, creates/connects the index, caches it
+boil explore      # browse and install
+```
+
+`setup` is once per project. It creates the index repo on GitHub if it doesn't
+exist yet — see [Setting up](#setting-up-boil-setup) — and writes the URL into
+`boil.toml`. Then the normal dev loop: `lune run tools/split -- --watch` in one
+terminal, `rojo serve` in another.
+
+If someone clones your game later, `boil install` restores anything in
+`boil-lock.toml` that isn't on disk. Usually that's nothing — installs are
+committed — but it repairs a missing folder.
+
+### Publishing a feature you built
+
+Say `src/features/Shop/` works in a real game and you want it everywhere. Check
+it's publishable *before* creating any repos:
+
+```bash
+boil publish src/features/Shop --dry-run
+```
+
+With no `boil.toml` in the folder, this prompts for scope/name/description/
+version/repo URL, writes the manifest, and stops. Open it and fill in what it
+can't know — dependencies, Wally requirements, Studio assets:
+
+```toml
+[package]
+name = "encryptal/shop"
+kind = "feature"
+version = "1.0.0"
+description = "Currency shop with rotating stock"
+repository = "https://github.com/encryptal/boil-shop"
+boil = "^0.1.0"
+
+[dependencies]
+"boil/playerdata" = "^1.0"          # because it has a PlayerData.luau registration file
+
+[wally]
+ByteNet = "ffrostflame/bytenet@0.4.6"
+
+[studio]
+tags = ["ShopKiosk"]
+notes = "Tag a part `ShopKiosk` in Workspace for the world interaction."
+```
+
+Re-run the dry run until it's green. It fails on undeclared `Packages.*`
+requires, on `.luau` files in subfolders (the splitter only reads a feature
+folder's top level, so those would silently never build), and on registration
+files with no matching `[dependencies]` entry. Those are exactly the mistakes
+that install cleanly and then break in *someone else's* game.
+
+Then create the package repo and publish for real:
+
+```bash
+# create encryptal/boil-shop on GitHub (empty), then:
+boil publish src/features/Shop
+```
+
+It runs the gate, runs all four lints, shows what it's about to do, and asks. On
+yes: pushes the folder to `boil-shop` tagged `v1.0.0`, then registers the version
+in the index. If you lack write access to the index it says so and points you at
+a PR — the package push has already succeeded at that point.
+
+Shipping an update is the same with `version` bumped. `--yes` skips the prompt.
+A skin is identical but `kind = "skin"`, a `contract` range, and it lives in
+`src/skins/<Name>/`.
+
+### Adding a feature to a game
+
+```bash
+boil explore                                  # menu: Features / Skins / Installed / Search
+boil add encryptal/shop                       # newest compatible
+boil add encryptal/shop@1.0.0                 # pinned
+boil add github:encryptal/boil-shop@v1.0.0    # no index involved
+boil add path:../boil-shop                    # local folder, before you publish
+```
+
+`add` copies the folder into `src/features/Shop/`, merges its Wally deps into
+`wally.toml`, installs what it depends on, runs the splitter, and prints what's
+left for you:
+
+```
+✓ installed encryptal/shop 1.0.0 → src/features/Shop/
+
+Added to wally.toml — run `wally install`
+  ByteNet = "ffrostflame/bytenet@0.4.6"
+
+Studio setup — you have to create these by hand
+  CollectionService tag: ShopKiosk
+  Tag a part `ShopKiosk` in Workspace for the world interaction.
+```
+
+So: `wally install`, then build the Studio assets. Commit the new folder.
+
+### Living with installed packages
+
+```bash
+boil list          # what's installed, and which ones you've edited
+boil outdated      # newer versions available
+boil update        # upgrade; shows the upstream diff first if you've edited it
+boil doctor        # missing deps, Wally gaps, packages not in the lockfile
+boil remove encryptal/shop
+```
+
+Editing an installed package is fine and expected — that's the point of
+vendoring. `list` marks it modified and `update` shows you what upstream changed
+before overwriting anything.
+
 ## Why this is tractable
 
 A feature is already a package in everything but name:
