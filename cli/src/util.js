@@ -78,6 +78,31 @@ export function removeDir(target) {
 	fs.rmSync(target, { recursive: true, force: true });
 }
 
+// Which files differ between two copies of the same tree. Used to preview a
+// package update and a framework upgrade before either overwrites anything.
+export function diffDirs(a, b) {
+	const added = [];
+	const changed = [];
+	const inA = new Set(listFiles(a));
+
+	for (const rel of listFiles(b)) {
+		if (!inA.has(rel)) {
+			added.push(rel);
+			continue;
+		}
+		if (readFile(path.join(a, rel)) !== readFile(path.join(b, rel))) {
+			changed.push(rel);
+		}
+		inA.delete(rel);
+	}
+
+	const removed = [...inA];
+	added.sort();
+	removed.sort();
+	changed.sort();
+	return { added, removed, changed };
+}
+
 // "encryptal/player-data" -> "PlayerData". The folder name becomes the Roblox
 // instance name and the registration key, so it has to be PascalCase.
 export function pascal(name) {

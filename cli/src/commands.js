@@ -9,7 +9,7 @@ import * as registry from "./registry.js";
 import * as semver from "./semver.js";
 import * as source from "./source.js";
 import * as term from "./term.js";
-import { copyDir, isDir, isFile, listFiles, readFile, removeDir } from "./util.js";
+import { copyDir, diffDirs, isDir, isFile, listFiles, readFile, removeDir } from "./util.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -19,30 +19,6 @@ export function installedVersions() {
 		out[entry.name] = entry.version;
 	}
 	return out;
-}
-
-// Files that differ between two copies of a package.
-function diffDirs(a, b) {
-	const added = [];
-	const changed = [];
-	const inA = new Set(listFiles(a));
-
-	for (const rel of listFiles(b)) {
-		if (!inA.has(rel)) {
-			added.push(rel);
-			continue;
-		}
-		if (readFile(path.join(a, rel)) !== readFile(path.join(b, rel))) {
-			changed.push(rel);
-		}
-		inA.delete(rel);
-	}
-
-	const removed = [...inA];
-	added.sort();
-	removed.sort();
-	changed.sort();
-	return { added, removed, changed };
 }
 
 // A feature package must be a flat folder: the splitter iterates files and skips

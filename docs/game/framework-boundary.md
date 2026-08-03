@@ -88,6 +88,37 @@ Remove the `UIShell` folder → no provider registers → the framework boots fi
 without it. A feature naming *itself* (the presentation requires `UIShell`) is
 allowed; only *framework* code naming a feature is not.
 
+## Updating the framework in an existing game
+
+This is what the boundary buys you, and it's a command rather than a merge:
+
+```bash
+boil upgrade              # newest framework
+boil upgrade --dry-run    # see what would change first
+boil upgrade --ref=v0.4.0 # a specific release
+```
+
+It fetches the framework and **replaces the four paths in the table above** —
+`src/shared/`, `src/client/`, `src/server/`, `tools/`. `src/features/` and
+`src/skins/` are never read, let alone written: they're yours, and the one-way
+dependency rule means the framework can't have opinions about them.
+
+Replacement rather than merge is deliberate — a file the framework *deleted* has
+to disappear, which a merge would happily keep. Three things it won't do blindly:
+
+- **`default.project.json`** carries your project name, so it's compared and
+  flagged, never overwritten. If a framework version adds a sync path (the way
+  `Skins` was added), the warning is your cue to add it by hand.
+- **`wally.toml`** only gains entries whose *name* is missing. A dependency you
+  pinned to a different version is left alone.
+- **A dirty working tree** stops the upgrade. Git is the undo button here — with
+  a clean tree, `git diff` afterwards is an exact record of what the framework
+  changed, and `git checkout .` reverts it. `--force` overrides.
+
+Afterwards it prints the checks worth running: the boundary lint first, since a
+framework change plus your features is exactly the combination it exists to
+police.
+
 ## Adding to the public surface
 
 When the framework grows a genuinely shared capability that features should

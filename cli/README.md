@@ -32,6 +32,7 @@ permissions.
 | ------- | ---- |
 | `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
 | `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
+| `upgrade` | Pull a newer framework into this game. Replaces `src/shared`, `src/client`, `src/server`, `tools/`; never touches features or skins. `--dry-run`, `--ref=<tag>`. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
 | `explore` | Interactive registry explorer. |
 | `search <term>` | Non-interactive index search — name + description match. |

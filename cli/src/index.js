@@ -22,6 +22,7 @@ import * as project from "./project.js";
 import * as publish from "./publish.js";
 import * as setup from "./setup.js";
 import * as term from "./term.js";
+import * as upgrade from "./upgrade.js";
 
 const USAGE = `boil — packages for Boil features and skins
 
@@ -35,6 +36,7 @@ Set up
 Develop
   dev [project-file]          run the splitter (watch) and rojo serve together
                               --port=34872 to change the Rojo port
+  upgrade                     pull a newer framework in; features/skins untouched
 
 Browse
   explore                     interactive registry explorer
@@ -67,7 +69,7 @@ Flags
   --no-split / --no-serve     dev: run only one half of the loop
   --empty / --starter         new: framework only, or with the example features
   --no-git                    new: skip git init
-  --template=<url> --ref=<t>  new: scaffold from a different repo or tag
+  --template=<url> --ref=<t>  new/upgrade: use a different repo or tag
   --version                   print the CLI version
 `;
 
@@ -111,6 +113,7 @@ function version() {
 const NEEDS_PROJECT = new Set([
 	"setup",
 	"dev",
+	"upgrade",
 	"explore",
 	"add",
 	"remove",
@@ -146,6 +149,14 @@ const HANDLERS = {
 			address: typeof parsed.flags.address === "string" ? parsed.flags.address : undefined,
 			split: parsed.flags["no-split"] === true ? false : undefined,
 			serve: parsed.flags["no-serve"] === true ? false : undefined,
+		}),
+	upgrade: (parsed) =>
+		upgrade.run(parsed.args, {
+			yes: parsed.flags.yes === true,
+			force: parsed.flags.force === true,
+			dryRun: parsed.flags["dry-run"] === true,
+			template: typeof parsed.flags.template === "string" ? parsed.flags.template : undefined,
+			ref: typeof parsed.flags.ref === "string" ? parsed.flags.ref : undefined,
 		}),
 	explore: () => explorer.run(),
 	search: (parsed) => commands.search(parsed.args),
