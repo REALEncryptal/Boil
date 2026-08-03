@@ -31,6 +31,48 @@ Managed by \`boil publish\`; you shouldn't need to edit it by hand. Browse it
 with \`boil explore\`.
 `;
 
+// What the user typed at the prompt → something we can actually clone.
+//
+// A bare `private-index` is a reasonable answer, so treat it as a repo name
+// under the GitHub account we can detect, and `owner/name` as that repo. Only
+// give up when there's genuinely nothing to go on — and never let an
+// unresolvable answer reach the project manifest, because a poisoned
+// `[registries] default` then gets suggested back on the next run.
+export function normalizeIndex(value, { owner, local } = {}) {
+	const text = trim(value ?? "");
+	if (text === "") {
+		return { error: "no index given" };
+	}
+
+	// Anything path-shaped, or an explicit --local, is a directory.
+	if (local || isDir(text) || text.startsWith(".") || text.includes("\\") || path.isAbsolute(text)) {
+		return { url: text, kind: "local" };
+	}
+
+	if (/^(https?:\/\/|git@|ssh:\/\/|file:\/\/)/.test(text)) {
+		return { url: text, kind: "remote" };
+	}
+
+	const ownerAndName = text.match(/^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/);
+	if (ownerAndName) {
+		return { url: `https://github.com/${text}`, kind: "remote", expanded: true };
+	}
+
+	if (/^[A-Za-z0-9._-]+$/.test(text)) {
+		if (!owner) {
+			return {
+				needsOwner: true,
+				error:
+					`"${text}" is just a name, and I can't tell which GitHub account to put it under ` +
+					`(this project has no git remote).\n  Try "<owner>/${text}", a full URL, or --local for a plain directory.`,
+			};
+		}
+		return { url: `https://github.com/${owner}/${text}`, kind: "remote", expanded: true };
+	}
+
+	return { error: `"${text}" isn't a URL, an <owner>/<name>, or a directory path` };
+}
+
 export function parseRepoUrl(url) {
 	const match = String(url).match(/github\.com[:/]([^/]+)\/([^/.]+)/);
 	return match ? [match[1], match[2]] : [undefined, undefined];
@@ -240,7 +282,8 @@ export async function run(args, options = {}) {
 	// 2. Where the index lives.
 	let url = options.index ?? args[0];
 	if (!url) {
-		let suggested = `https://github.com/${originOwner() ?? "your-github-username"}/boil-index`;
+		const detected = originOwner();
+		let suggested = detected ? `https://github.com/${detected}/boil-index` : "boil-index";
 		if (proj.registries.default && proj.registries.default !== registry.DEFAULT_URL) {
 			suggested = proj.registries.default;
 		}
@@ -249,6 +292,26 @@ export async function run(args, options = {}) {
 	if (!url || url === "") {
 		term.fail("no index URL — re-run with `boil setup <url>`");
 	}
+
+	// Resolve before persisting. A value that can't be cloned must never reach
+	// boil.toml, or the next run offers it back as the default.
+	let resolved = normalizeIndex(url, { owner: originOwner(), local: options.localIndex });
+
+	// A name with no detectable owner is the common case for a project that was
+	// scaffolded but never pushed — ask rather than dead-end.
+	if (resolved.needsOwner && !options.yes) {
+		const owner = await term.text("GitHub owner (your username or org)");
+		if (owner && trim(owner) !== "") {
+			resolved = normalizeIndex(url, { owner: trim(owner), local: options.localIndex });
+		}
+	}
+	if (resolved.error) {
+		term.fail(resolved.error);
+	}
+	if (resolved.expanded) {
+		term.info(`${url} → ${resolved.url}`);
+	}
+	url = resolved.url;
 
 	proj.registries.default = url;
 	project.write(proj);
