@@ -43,6 +43,15 @@ export function parseSpec(text) {
 	if (startsWith(body, "http://") || startsWith(body, "https://") || startsWith(body, "git@")) {
 		return { git: body, tag: version };
 	}
+
+	// `company:acme/shop` — qualify which registry to look in when more than one
+	// publishes the same name. Checked after the fixed prefixes above, so a
+	// registry can't be named "github" or "path" and shadow them.
+	const qualified = body.match(/^([A-Za-z0-9_-]+):(.+\/.+)$/);
+	if (qualified) {
+		return { registry: qualified[1], name: qualified[2], version };
+	}
+
 	return { name: body, version };
 }
 

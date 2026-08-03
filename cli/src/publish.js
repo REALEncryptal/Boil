@@ -177,8 +177,8 @@ function emptyListing(pkg) {
 	return { name: pkg.name, kind: pkg.kind, description: pkg.description ?? "", versions: [] };
 }
 
-function pushIndex(pkg, tag) {
-	const url = registry.url();
+function pushIndex(pkg, tag, registryName) {
+	const url = registryName ? registry.byName(registryName).url : registry.url();
 	if (isDir(url)) {
 		const listing = registry.find(pkg.name, url) ?? emptyListing(pkg);
 		mergeRelease(listing, pkg, tag);
@@ -278,15 +278,27 @@ export async function run(args, options = {}) {
 		term.fail("no `repository` in boil.toml — set it to the git URL this package publishes to");
 	}
 
+	let target = registry.byName(registry.DEFAULT_NAME);
+	if (options.registry) {
+		target = registry.byName(options.registry);
+		if (!target) {
+			const known = registry
+				.all()
+				.map((entry) => entry.name)
+				.join(", ");
+			term.fail(`unknown registry "${options.registry}" — configured: ${known}`);
+		}
+	}
+
 	const tag = `v${pkg.version}`;
 	if (options.dryRun) {
-		term.ok(`dry run: would push ${dir}/ to ${pkg.repository} at ${tag} and register it in ${registry.url()}`);
+		term.ok(`dry run: would push ${dir}/ to ${pkg.repository} at ${tag} and register it in ${target.name} (${target.url})`);
 		return;
 	}
 
 	term.print("");
 	term.info(`push ${dir}/ → ${pkg.repository} @ ${tag}`);
-	term.info(`register ${pkg.name} ${pkg.version} in ${registry.url()}`);
+	term.info(`register ${pkg.name} ${pkg.version} in ${term.bold(target.name)} ${term.dim(target.url)}`);
 	if (!options.yes && !(await term.confirm("Publish?"))) {
 		term.print("Cancelled.");
 		return;
@@ -297,7 +309,7 @@ export async function run(args, options = {}) {
 	}
 	term.ok(`pushed ${pkg.repository} @ ${tag}`);
 
-	if (!pushIndex(pkg, tag)) {
+	if (!pushIndex(pkg, tag, options.registry)) {
 		term.fail("the package was pushed, but the index was not updated");
 	}
 	term.ok(`published ${pkg.name} ${pkg.version}`);

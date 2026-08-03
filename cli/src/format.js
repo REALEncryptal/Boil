@@ -82,7 +82,20 @@ export function row(listing, installed, nameWidth) {
 
 export function rows(listings, installed) {
 	const nameWidth = listings.reduce((widest, listing) => Math.max(widest, listing.name.length), 12);
-	return listings.map((listing) => row(listing, installed, nameWidth));
+
+	// Only label the source when the list actually spans registries — a column of
+	// identical "default" tags is noise.
+	const sources = new Set(listings.map((listing) => listing.registry).filter(Boolean));
+	const showSource = sources.size > 1;
+	const sourceWidth = showSource ? Math.max(...[...sources].map((name) => name.length)) : 0;
+
+	return listings.map((listing) => {
+		const base = row(listing, installed, nameWidth);
+		if (!showSource) {
+			return base;
+		}
+		return `${base}  ${term.dim(pad(listing.registry ?? "", sourceWidth))}`;
+	});
 }
 
 // The detail view: everything you need to decide whether to install.
@@ -105,6 +118,9 @@ export function detail(listing, release, installedVersion) {
 	const installedNote = installedVersion ? term.dim(` (installed: ${installedVersion})`) : "";
 	add(`  ${pad("version", 12)}${release.version}${installedNote}`);
 	add(`  ${pad("kind", 12)}${listing.kind} → ${project.INSTALL_DIRS[listing.kind] ?? "?"}/`);
+	if (listing.registry) {
+		add(`  ${pad("registry", 12)}${listing.registry}`);
+	}
 	if (release.source) {
 		add(`  ${pad("source", 12)}${release.source}${release.tag ? term.dim(` @ ${release.tag}`) : ""}`);
 	}

@@ -32,10 +32,23 @@ function checkFlat(pkg, dir) {
 }
 
 function resolveIndexed(spec) {
-	const listing = registry.find(spec.name);
+	const found = registry.resolve(spec.name, spec.registry);
+
+	if (found.error) {
+		term.fail(found.error);
+	}
+	if (found.ambiguous) {
+		term.print(term.red(`"${spec.name}" is published in more than one registry:`));
+		for (const match of found.ambiguous) {
+			term.info(`• ${term.bold(`${match.registry}:${spec.name}`)}  ${term.dim(match.description)}`);
+		}
+		term.fail("qualify which one you mean, e.g. `boil add <registry>:<package>`");
+	}
+
+	const listing = found.listing;
 	if (!listing) {
-		const hint = registry.localPath() ? "" : " (the index has never been fetched — try `boil refresh`)";
-		term.fail(`"${spec.name}" is not in the index${hint}`);
+		const hint = registry.anyCached() ? "" : " (no index has been fetched — try `boil refresh`)";
+		term.fail(`"${spec.name}" is not in any configured registry${hint}`);
 	}
 
 	const release = format.findRelease(listing, spec.version);
@@ -63,9 +76,11 @@ export async function add(args, options = {}) {
 
 	const spec = source.parseSpec(specText);
 	let fetchSpec = spec;
+	let fromRegistry;
 
 	if (spec.name) {
-		const { release } = resolveIndexed(spec);
+		const { listing, release } = resolveIndexed(spec);
+		fromRegistry = listing.registry;
 		const compatibility = format.compat(release);
 		if (!compatibility.ok && !options.force) {
 			term.fail(
@@ -137,6 +152,9 @@ export async function add(args, options = {}) {
 		source: source.describe(fetchSpec),
 		tag: fetchSpec.tag,
 		subdir: fetchSpec.subdir,
+		// Which registry it came from, so `outdated` and `update` look there
+		// first rather than re-resolving a name two registries might share.
+		registry: fromRegistry,
 		path: target,
 		fingerprint: project.fingerprint(target),
 	});
@@ -154,8 +172,8 @@ export async function add(args, options = {}) {
 		if (installed[name] && semver.satisfies(installed[name], range)) {
 			continue;
 		}
-		if (!registry.find(name)) {
-			term.warn(`${pkg.name} depends on ${name} ${range}, which isn't in the index — install it yourself`);
+		if (!registry.resolve(name).listing) {
+			term.warn(`${pkg.name} depends on ${name} ${range}, which isn't in any registry — install it yourself`);
 			continue;
 		}
 		await add([`${name}@${range}`], { quiet: true, skipSplit: true, direct: false, force: options.force });
@@ -251,7 +269,7 @@ export async function outdated() {
 	let stale = 0;
 
 	for (const entry of lock.read()) {
-		const listing = registry.find(entry.name);
+		const listing = registry.resolve(entry.name, entry.registry).listing;
 		if (!listing) continue;
 
 		const newest = format.latest(listing);
@@ -280,9 +298,9 @@ export async function outdated() {
 }
 
 async function updateOne(entry, force) {
-	const listing = registry.find(entry.name);
+	const listing = registry.resolve(entry.name, entry.registry).listing;
 	if (!listing) {
-		term.warn(`${entry.name} is not in the index — skipped`);
+		term.warn(`${entry.name} is not in any configured registry — skipped`);
 		return false;
 	}
 
@@ -386,11 +404,11 @@ export async function search(args) {
 		term.fail("usage: boil search <term>");
 	}
 
-	if (!registry.localPath()) {
-		term.fail(`no index cached for ${registry.url()} — run \`boil refresh\` first`);
+	if (!registry.anyCached()) {
+		term.fail("no index has been fetched yet — run `boil refresh` first");
 	}
 
-	const hits = registry.search(needle);
+	const hits = registry.searchAll(needle);
 	if (hits.length === 0) {
 		term.print(`No packages match "${needle}".`);
 		return;
@@ -409,24 +427,49 @@ export async function info(args) {
 		term.fail("usage: boil info <package>");
 	}
 
-	const listing = registry.find(name);
+	// Same spec grammar as `add`, so `boil info company:acme/shop` works.
+	const spec = source.parseSpec(name);
+	const wanted = spec.name ?? name;
+
+	const found = registry.resolve(wanted, spec.registry);
+	if (found.error) {
+		term.fail(found.error);
+	}
+	if (found.ambiguous) {
+		term.print(term.red(`"${wanted}" is published in more than one registry:`));
+		for (const match of found.ambiguous) {
+			term.info(`• ${term.bold(`${match.registry}:${wanted}`)}  ${term.dim(match.description)}`);
+		}
+		term.fail("qualify which one you mean, e.g. `boil info <registry>:<package>`");
+	}
+	const listing = found.listing;
 	if (!listing) {
-		term.fail(`"${name}" is not in the index`);
+		term.fail(`"${wanted}" is not in any configured registry`);
 	}
 
 	term.print("");
-	for (const line of format.detail(listing, format.latest(listing), installedVersions()[name])) {
+	for (const line of format.detail(listing, format.latest(listing), installedVersions()[wanted])) {
 		term.print(line);
 	}
 	term.print("");
 }
 
 export async function refresh() {
-	const [ok, message] = registry.refresh();
-	if (!ok) {
-		term.fail(message);
+	const results = registry.refreshAll();
+	let failures = 0;
+
+	for (const result of results) {
+		if (!result.ok) {
+			failures += 1;
+			term.warn(`${result.name}: ${result.message}`);
+			continue;
+		}
+		term.ok(`${term.bold(result.name)}  ${result.message} — ${registry.load(result.url).length} package(s)`);
 	}
-	term.ok(`${message} — ${registry.load().length} package(s)`);
+
+	if (failures === results.length) {
+		term.fail("no registry could be reached");
+	}
 }
 
 // Everything that's wrong with the current install set, in one pass.

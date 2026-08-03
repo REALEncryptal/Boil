@@ -25,6 +25,9 @@ function installedListings(listings) {
 
 // Detail view + actions. Returns true if something was installed.
 async function showPackage(listing) {
+	// Install by the qualified name when we know which registry this listing came
+	// from — picking a row is unambiguous even when the bare name isn't.
+	const spec = listing.registry ? `${listing.registry}:${listing.name}` : listing.name;
 	while (true) {
 		const installed = commands.installedVersions()[listing.name];
 		const newest = format.latest(listing);
@@ -50,7 +53,7 @@ async function showPackage(listing) {
 			}
 			actions.push(label);
 			handlers.push(async () => {
-				await commands.add([`${listing.name}@${newest.version}`], { force: true });
+				await commands.add([`${spec}@${newest.version}`], { force: true });
 				return true;
 			});
 		}
@@ -63,7 +66,7 @@ async function showPackage(listing) {
 				if (!picked) {
 					return undefined;
 				}
-				await commands.add([`${listing.name}@${versions[picked - 1]}`], { force: true });
+				await commands.add([`${spec}@${versions[picked - 1]}`], { force: true });
 				return true;
 			});
 		}
@@ -104,7 +107,7 @@ async function browse(title, listings) {
 }
 
 export async function run() {
-	if (!registry.localPath()) {
+	if (!registry.anyCached()) {
 		term.print("");
 		term.warn(`No index cached yet for ${registry.url()}`);
 		if (!(await term.confirm("Fetch it now?"))) {
@@ -114,38 +117,58 @@ export async function run() {
 	}
 
 	while (true) {
-		const listings = registry.load();
+		const listings = registry.loadAll();
 		const features = byKind(listings, "feature");
 		const skins = byKind(listings, "skin");
 		const installed = installedListings(listings);
 
+		const registries = registry.all();
 		const options = [
 			`Features (${features.length})`,
 			`Skins (${skins.length})`,
 			`Installed (${installed.length})`,
 			"Search…",
-			"Refresh index",
+			"Refresh indexes",
 			"Quit",
 		];
+		// Only worth a menu entry when there's more than one to choose between.
+		if (registries.length > 1) {
+			options.splice(3, 0, `By registry (${registries.length})…`);
+		}
 
 		term.print("");
 		const choice = await term.select(`Boil registry — ${listings.length} package(s)`, options);
-
-		if (!choice || choice === 6) {
+		if (!choice) {
 			return;
 		}
-		if (choice === 1) {
+
+		const picked = options[choice - 1];
+		if (picked === "Quit") {
+			return;
+		}
+		if (picked.startsWith("Features")) {
 			await browse("Features", features);
-		} else if (choice === 2) {
+		} else if (picked.startsWith("Skins")) {
 			await browse("Skins", skins);
-		} else if (choice === 3) {
+		} else if (picked.startsWith("Installed")) {
 			await browse("Installed", installed);
-		} else if (choice === 4) {
+		} else if (picked.startsWith("By registry")) {
+			const labels = registries.map(
+				(entry) => `${entry.name}  ${term.dim(`${entry.url}  (${entry.scope})`)}`,
+			);
+			labels.push("Back");
+			const which = await term.select("Which registry?", labels);
+			if (which && which <= registries.length) {
+				const entry = registries[which - 1];
+				const owned = listings.filter((listing) => listing.registry === entry.name);
+				await browse(entry.name, owned);
+			}
+		} else if (picked === "Search…") {
 			const needle = await term.text("Search");
 			if (needle && needle !== "") {
-				await browse(`Results for "${needle}"`, registry.search(needle));
+				await browse(`Results for "${needle}"`, registry.searchAll(needle));
 			}
-		} else if (choice === 5) {
+		} else if (picked.startsWith("Refresh")) {
 			await commands.refresh();
 		}
 	}

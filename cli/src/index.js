@@ -15,10 +15,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as commands from "./commands.js";
+import * as config from "./config.js";
 import * as dev from "./dev.js";
 import * as explorer from "./explorer.js";
 import * as newProject from "./new.js";
 import * as project from "./project.js";
+import * as registries from "./registries.js";
 import * as publish from "./publish.js";
 import * as setup from "./setup.js";
 import * as term from "./term.js";
@@ -40,12 +42,18 @@ Develop
 
 Browse
   explore                     interactive registry explorer
-  search <term>               search the index
+  search <term>               search every configured registry
   info <package>              show a package's detail view
-  refresh                     update the cached index
+  refresh                     update every cached index
+
+Registries
+  registry list               where packages are looked up, and from which layer
+  registry add <name> <url>   add one (--project to scope it to this game)
+  registry remove <name>      remove one
 
 Install
-  add <package>[@version]     install from the index
+  add <package>[@version]     install from any configured registry
+  add <registry>:<package>    qualify when two registries share a name
   add github:owner/repo[@tag] install straight from a git repo
   add path:<dir>              install from a local directory
   remove <package>            uninstall and drop from the lockfile
@@ -70,7 +78,26 @@ Flags
   --empty / --starter         new: framework only, or with the example features
   --no-git                    new: skip git init
   --template=<url> --ref=<t>  new/upgrade: use a different repo or tag
+  --registry=<name>           publish: which registry to register in
+  --project                   registry add/remove: write to boil.toml, not ~/.boil
   --version                   print the CLI version
+`;
+
+// Shown the first time someone runs a bare `boil` with no config and no project
+// around them — the three things worth knowing, instead of forty lines of usage.
+const WELCOME = `${term.bold("boil")} — packages for Boil features and skins
+
+You don't have a project here yet. Two ways to start:
+
+  ${term.cyan("boil new my-game")}          scaffold a game from the framework
+  ${term.cyan("cd <existing-project>")}     then \`boil setup\` to connect an index
+
+Installing from a private or company index? Add it once per machine:
+
+  ${term.cyan("boil registry add company https://github.com/acme/boil-index")}
+  ${term.cyan("boil registry list")}        see what's configured
+
+${term.dim("`boil help` lists every command.")}
 `;
 
 function parse(argv) {
@@ -168,7 +195,13 @@ const HANDLERS = {
 	update: (parsed) => commands.update(parsed.args, parsed.flags.force === true),
 	outdated: () => commands.outdated(),
 	list: () => commands.list(),
-	publish: (parsed) => publish.run(parsed.args, { yes: parsed.flags.yes, dryRun: parsed.flags["dry-run"] }),
+	publish: (parsed) =>
+		publish.run(parsed.args, {
+			yes: parsed.flags.yes,
+			dryRun: parsed.flags["dry-run"],
+			registry: typeof parsed.flags.registry === "string" ? parsed.flags.registry : undefined,
+		}),
+	registry: (parsed) => registries.run(parsed.args, { project: parsed.flags.project === true }),
 	doctor: () => commands.doctor(),
 };
 
@@ -177,6 +210,10 @@ export async function main(argv) {
 
 	if (parsed.flags.version || parsed.command === "version") {
 		term.print(version());
+		return;
+	}
+	if (!parsed.command && !config.exists() && !project.findRoot()) {
+		term.print(WELCOME);
 		return;
 	}
 	if (!parsed.command || parsed.flags.help || parsed.command === "help") {

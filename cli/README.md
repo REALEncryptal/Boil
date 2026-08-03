@@ -26,6 +26,14 @@ There is no website. The explorer is a terminal UI over a git repo of manifests,
 so browsing works offline and private packages work through normal GitHub
 permissions.
 
+Multiple indexes are supported — the public one, your company's, a private one —
+configured per machine or per project:
+
+```bash
+boil registry add company https://github.com/acme/boil-index
+boil add company:acme/shop        # qualify when two registries share a name
+```
+
 ## Commands
 
 | Command | Does |
@@ -34,10 +42,12 @@ permissions.
 | `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
 | `upgrade` | Pull a newer framework into this game. Replaces `src/shared`, `src/client`, `src/server`, `tools/`; never touches features or skins. `--dry-run`, `--ref=<tag>`. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
+| `registry list/add/remove` | Manage where packages are looked up. Machine-wide by default (`~/.boil/config.toml`), `--project` for this game only. |
 | `explore` | Interactive registry explorer. |
 | `search <term>` | Non-interactive index search — name + description match. |
 | `info <pkg>` | The explorer's detail view, printed. |
 | `refresh` | Update the cached index clone. |
+| `add <registry>:<pkg>` | Qualify which registry when two publish the same name. |
 | `add <pkg>[@version]` | Resolve → fetch → copy into `src/` → merge `[wally]` deps → run the splitter → print `[studio]` setup notes. |
 | `add github:owner/repo[@tag]` | Install straight from a git URL, no index involved. |
 | `add path:<dir>` | Install from a local directory. |

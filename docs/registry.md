@@ -301,6 +301,66 @@ code you wrote," which is the whole point of a boilerplate.
 Local edits are legal and expected. `boil update` shows you what upstream changed
 and lets you decide.
 
+## Multiple registries
+
+A project can look packages up in more than one index — the public one, your
+company's, a private one of your own. They're configured in three layers, each
+overriding the last on a name collision:
+
+| Layer | Where | For |
+| ----- | ----- | --- |
+| built-in | `default` → the public index | works with no config at all |
+| user | `~/.boil/config.toml` | indexes you use in every project |
+| project | `boil.toml` `[registries]` | an index specific to one game, committed with it |
+
+```bash
+boil registry list                                    # what's configured, and from which layer
+boil registry add company https://github.com/acme/boil-index
+boil registry add secret git@github.com:me/index --project
+boil registry remove company
+```
+
+Machine-wide is the default because a company index is a property of *you*, not
+of one checkout. `--project` writes to `boil.toml` instead, so it's committed and
+your teammates get it automatically.
+
+`search`, `explore`, `refresh` and `doctor` span every configured registry;
+`explore` grows a **By registry** view once you have more than one, and lists
+show which index a package came from.
+
+### When two registries publish the same name
+
+Nothing is silently preferred. `boil add` refuses and makes you say which:
+
+```
+"test/demo" is published in more than one registry:
+  • company:test/demo  COMPANY build of demo
+  • mine:test/demo     A demo feature used to test the registry
+× qualify which one you mean, e.g. `boil add <registry>:<package>`
+```
+
+```bash
+boil add company:acme/shop          # qualified
+boil add company:acme/shop@2.0.0    # qualified and pinned
+boil info company:acme/shop
+```
+
+Precedence-based resolution would mean installing a *different* package than the
+one you meant because someone else's index happens to use the name — exactly the
+failure a private registry must not have. The lockfile records which registry
+each package came from, so `outdated` and `update` look there first rather than
+re-resolving a shared name.
+
+Publishing targets the `default` registry unless you say otherwise:
+
+```bash
+boil publish src/features/Shop --registry=company
+```
+
+`github:owner/repo` and `path:<dir>` still bypass registries entirely, which is
+the quickest way to install something private without configuring anything. (Those
+two prefixes are reserved — a registry can't be named `github` or `path`.)
+
 ## The registry
 
 An **index repo** — one TOML file per package, listing every published version:
