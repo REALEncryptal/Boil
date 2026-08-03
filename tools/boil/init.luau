@@ -17,12 +17,17 @@ local process = require("@lune/process")
 local commands = require("./commands")
 local explorer = require("./explorer")
 local publish = require("./publish")
+local setup = require("./setup")
 local term = require("./term")
 
 local USAGE = [[
 boil — packages for Boil features and skins
 
   lune run tools/boil -- <command> [args] [flags]
+
+Set up
+  setup [index-url]           name the project and create/connect the index
+                              (creates the GitHub repo via gh or GITHUB_TOKEN)
 
 Browse
   explore                     interactive registry explorer
@@ -46,8 +51,11 @@ Author
 
 Flags
   --force                     overwrite an existing install / ignore compat
-  --yes                       skip the publish confirmation
+  --yes                       skip confirmations (setup, publish)
   --dry-run                   publish: run the gate, push nothing
+  --local                     setup: scaffold a plain directory, not a git repo
+  --public                    setup: create the index repo public (default private)
+  --skip-index                setup: only write the project manifest
 ]]
 
 type Parsed = {
@@ -90,6 +98,14 @@ if not fs.isFile("default.project.json") then
 end
 
 local handlers: { [string]: () -> () } = {
+	setup = function()
+		setup.run(parsed.args, {
+			localIndex = parsed.flags["local"],
+			private = not parsed.flags.public,
+			yes = parsed.flags.yes,
+			skipIndex = parsed.flags["skip-index"],
+		})
+	end,
 	explore = function()
 		explorer.run()
 	end,

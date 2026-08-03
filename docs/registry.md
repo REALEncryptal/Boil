@@ -195,6 +195,7 @@ lune run tools/boil -- <command>
 
 | Command | Does |
 | ------- | ---- |
+| `setup [url]` | Name the project, create/connect the index, cache it. See below. |
 | `explore` | **Interactive terminal explorer** (see below). |
 | `search <term>` | Non-interactive index search — name + description match. |
 | `info <pkg>` | The explorer's detail view, printed. Same code path, scriptable. |
@@ -208,6 +209,31 @@ lune run tools/boil -- <command>
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
 | `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created. |
+
+### Setting up (`boil setup`)
+
+The index is a git repo that has to exist before anything can be published to it.
+`setup` creates it for you rather than making that a manual checklist:
+
+```bash
+lune run tools/boil -- setup                    # asks, defaults to <your-org>/boil-index
+lune run tools/boil -- setup https://github.com/me/boil-index --yes
+lune run tools/boil -- setup ../boil-index --local    # a plain directory, no git
+```
+
+It names the project, then makes sure the index exists — creating the GitHub repo
+with the `gh` CLI if it's installed and authenticated, otherwise through the
+GitHub API with `GITHUB_TOKEN` / `GH_TOKEN`, otherwise printing the one command
+for you to run. Once it exists it's seeded with `packages/` and a README, the URL
+is written to `[registries] default`, and the index is cached so `explore` works
+immediately.
+
+Everything it does is idempotent and additive: an index that already exists keeps
+its contents (it only gains `packages/` if that's missing), and nothing here ever
+force-pushes or deletes. Re-running it is safe.
+
+Defaults to a **private** repo; pass `--public` for a shared one. `--skip-index`
+writes just the project manifest.
 
 ### The explorer
 
@@ -311,10 +337,10 @@ Run `lune run tools/check-skins` to see which contract keys you still owe.
   git fetch, `add`/`remove`/`list`/`install`/`update`/`doctor`, the explorer over a
   local index. ✅
 - **Phase 2 — the index.** `publish`, `search`, `outdated` and the explorer all
-  work against an index today, and the whole flow is verified end to end against a
-  local one. ⏳ **Pending: the `boil-index` repo doesn't exist yet.** Create it
-  with a `packages/` directory and point `[registries] default` at it — until
-  then, `add github:owner/repo` and `add path:<dir>` work with no index at all.
+  work against an index, and `boil setup` creates and seeds one. The
+  `boil-index` repo referenced by the default config doesn't exist yet — run
+  `boil setup` to create it. Until then `add github:owner/repo` and
+  `add path:<dir>` work with no index at all. ✅
 
 A registry URL that resolves to a local directory is used in place rather than
 cloned, so you can develop against an index before publishing it anywhere:

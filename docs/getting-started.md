@@ -42,10 +42,15 @@ rojo build -o Boil.rbxlx    # or --output Boil.rbxl
 ## Adding features and skins from the registry
 
 ```bash
+lune run tools/boil -- setup          # name the project, create/connect the index
 lune run tools/boil -- explore        # browse the index and install from the list
 lune run tools/boil -- add encryptal/shop
 lune run tools/boil -- install        # restore everything after a fresh clone
 ```
+
+`setup` is a one-time step per project — it creates the index repo on GitHub if
+it doesn't exist yet (via the `gh` CLI or `GITHUB_TOKEN`) and points this
+checkout at it.
 
 Features land in `src/features/<Name>/`, skins in `src/skins/<Name>/`, both
 vendored and committed. Run `wally install` afterwards if the install reported new
