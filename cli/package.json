@@ -15,7 +15,11 @@
 		"README.md"
 	],
 	"scripts": {
-		"test": "node --test test/*.test.js"
+		"test": "node --test test/*.test.js",
+		"prepublishOnly": "npm test"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"engines": {
 		"node": ">=18.17"
