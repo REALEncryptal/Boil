@@ -141,12 +141,27 @@ function seedIndex(url) {
 	}
 
 	source.git(["add", "-A"], work);
-	source.git(["commit", "-m", "Initialize the Boil package index"], work);
+
+	// Check the commit rather than letting a failure surface at push time as
+	// "src refspec HEAD does not match any", which says nothing about the actual
+	// cause — almost always an unset git identity on a fresh machine.
+	const [committed, commitOutput] = source.git(["commit", "-m", "Initialize the Boil package index"], work);
+	if (!committed) {
+		removeDir(work);
+		term.warn(`could not commit to the index:\n${trim(commitOutput)}`);
+		if (/user\.email|user\.name|tell me who you are/i.test(commitOutput)) {
+			term.info("Set your git identity, then re-run `boil setup`:");
+			term.info(term.cyan('  git config --global user.email "you@example.com"'));
+			term.info(term.cyan('  git config --global user.name "Your Name"'));
+		}
+		return false;
+	}
 
 	const [pushed, pushOutput] = source.git(["push", "-u", "origin", "HEAD"], work);
 	removeDir(work);
 	if (!pushed) {
 		term.warn(`could not push to ${url}:\n${trim(pushOutput)}`);
+		term.info("You need write access to the index repository.");
 		return false;
 	}
 	return true;
