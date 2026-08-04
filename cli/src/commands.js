@@ -6,6 +6,7 @@ import * as lock from "./lock.js";
 import * as manifest from "./manifest.js";
 import * as project from "./project.js";
 import * as registry from "./registry.js";
+import * as self from "./self.js";
 import * as semver from "./semver.js";
 import * as source from "./source.js";
 import * as term from "./term.js";
@@ -534,8 +535,13 @@ export async function doctor() {
 		}
 	}
 
+	// Counted separately from the package problems above: a stale CLI is a
+	// problem with the tool, not with anything this project installed, and the
+	// summary line below is about packages.
+	const stale = self.announce(await self.check());
+
 	if (problems === 0) {
-		term.ok(`${entries.length} package(s), nothing wrong`);
+		term.ok(`${entries.length} package(s), nothing wrong${stale ? " — but update the CLI" : ""}`);
 		return;
 	}
 	term.print("");

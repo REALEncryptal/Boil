@@ -418,7 +418,7 @@ it. One global install now serves every Boil project on the machine.
 | ------- | ---- |
 | `new [name]` | Scaffold a new game from the framework template. |
 | `dev [project-file]` | Splitter (watch) + `rojo serve` in one terminal. `--port=`, `--address=`. |
-| `upgrade` | Pull a newer framework in; features and skins untouched. See [framework-boundary.md](game/framework-boundary.md). |
+| `upgrade` | Pull a newer framework in; features and skins untouched. Also flags a stale CLI — that's a separate version, updated with npm. See [framework-boundary.md](game/framework-boundary.md). |
 | `setup [url]` | Name the project, create/connect the index, cache it. See below. |
 | `explore` | **Interactive terminal explorer** (see below). |
 | `search <term>` | Non-interactive index search — name + description match. |
@@ -432,7 +432,7 @@ it. One global install now serves every Boil project on the machine.
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
 | `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
-| `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created. |
+| `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
 
 ### Setting up (`boil setup`)
 

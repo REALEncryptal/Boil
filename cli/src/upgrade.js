@@ -12,6 +12,7 @@
 import path from "node:path";
 
 import * as project from "./project.js";
+import * as self from "./self.js";
 import * as source from "./source.js";
 import * as term from "./term.js";
 import * as toml from "./toml.js";
@@ -151,6 +152,13 @@ function summarize(plan) {
 export async function run(args, options = {}) {
 	term.heading("boil upgrade");
 
+	// This command upgrades the framework, not the CLI running it — and the
+	// version it reports at the end is the framework's, which is not the number
+	// `boil --version` prints. Say so up front, so "already up to date" can't be
+	// read as "your whole install is current" when the fix you need shipped in a
+	// newer CLI.
+	self.announce(await self.check());
+
 	const url = options.template ?? DEFAULT_TEMPLATE;
 	const work = tempDir("upgrade");
 	removeDir(work);
@@ -173,12 +181,14 @@ export async function run(args, options = {}) {
 
 	if (plan.total === 0 && plan.wally.length === 0) {
 		removeDir(work);
-		term.ok(`already up to date${plan.version ? ` (Boil ${plan.version})` : ""}`);
+		term.ok(`the framework is already up to date${plan.version ? ` (Boil ${plan.version})` : ""}`);
 		return;
 	}
 
 	term.print("");
-	term.info(`${current} → ${plan.version ?? "unknown"}   ${term.dim(`${plan.total} file(s) across the framework`)}`);
+	term.info(
+		`framework ${current} → ${plan.version ?? "unknown"}   ${term.dim(`${plan.total} file(s) across the framework`)}`,
+	);
 	summarize(plan);
 
 	if (plan.wally.length > 0) {

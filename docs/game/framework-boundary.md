@@ -119,6 +119,24 @@ Afterwards it prints the checks worth running: the boundary lint first, since a
 framework change plus your features is exactly the combination it exists to
 police.
 
+### The framework version is not the CLI version
+
+Two numbers, both called Boil, and they move independently:
+
+| | Where it lives | What updates it |
+| - | -------------- | --------------- |
+| **Framework** | `boil.toml` → `[project] boil = "0.1.0"` | `boil upgrade` |
+| **CLI** | the global npm install; `boil --version` | `npm i -g @encryptal/boil@latest` |
+
+`boil upgrade` can only move the first one. Nothing inside a project can update
+the tool doing the upgrading — so when a bug you're hitting was fixed in a newer
+CLI, `boil upgrade` will honestly report the framework as up to date and leave
+you no better off.
+
+That's why `upgrade` and `doctor` both check npm for a newer CLI and say so
+before doing anything else. The check is best-effort: offline, or with the
+registry unreachable, it stays quiet rather than failing the command.
+
 ## Adding to the public surface
 
 When the framework grows a genuinely shared capability that features should

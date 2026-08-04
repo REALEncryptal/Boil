@@ -10,10 +10,6 @@
 //
 // See docs/registry.md.
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import * as commands from "./commands.js";
 import * as config from "./config.js";
 import * as dev from "./dev.js";
@@ -22,6 +18,7 @@ import * as newProject from "./new.js";
 import * as project from "./project.js";
 import * as registries from "./registries.js";
 import * as publish from "./publish.js";
+import * as self from "./self.js";
 import * as setup from "./setup.js";
 import * as term from "./term.js";
 import * as upgrade from "./upgrade.js";
@@ -128,12 +125,6 @@ function parse(argv) {
 	return { command, args, flags };
 }
 
-function version() {
-	const here = path.dirname(fileURLToPath(import.meta.url));
-	const manifest = JSON.parse(fs.readFileSync(path.join(here, "..", "package.json"), "utf8"));
-	return manifest.version;
-}
-
 // Commands that read or write project files. Everything else (searching the
 // index, reading a package's detail view) works from any directory, which is
 // the point of installing this globally.
@@ -209,7 +200,7 @@ export async function main(argv) {
 	const parsed = parse(argv);
 
 	if (parsed.flags.version || parsed.command === "version") {
-		term.print(version());
+		term.print(self.localVersion() ?? "unknown");
 		return;
 	}
 	if (!parsed.command && !config.exists() && !project.findRoot()) {
