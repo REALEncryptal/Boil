@@ -62,7 +62,7 @@ install once, not something every game vendors.
 
 `setup` is once per project. It creates the index repo on GitHub if it doesn't
 exist yet — see [Setting up](#setting-up-boil-setup) — and writes the URL into
-`boil.toml`. Then the normal dev loop: `lune run tools/split -- --watch` in one
+`boil.toml`. Then the normal dev loop: `lune run tools/split --watch` in one
 terminal, `rojo serve` in another.
 
 If someone clones your game later, `boil install` restores anything in

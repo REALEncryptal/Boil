@@ -15,6 +15,23 @@ import { isDir, isFile, trim } from "./util.js";
 
 export const DEFAULT_SPLIT = "tools/split";
 
+// Lune 0.9.0 stopped sinking flags passed to `lune run`: `--` is no longer
+// needed to get `--watch` through, and passing it anyway sends a literal "--"
+// as the script's first argument. Old Lune is the mirror image — without the
+// separator it claims `--watch` for itself and refuses to start. So the
+// separator is a function of the installed version, not a constant.
+//
+// Unknown version (a `lune --version` we can't parse) means new Lune: 0.8 is
+// years old, and the splitter tolerates a stray "--" either way.
+export function needsSeparator(version) {
+	const match = /(\d+)\.(\d+)\.(\d+)/.exec(version ?? "");
+	if (!match) {
+		return false;
+	}
+	const [major, minor] = [Number(match[1]), Number(match[2])];
+	return major === 0 && minor < 9;
+}
+
 export function parsePort(value) {
 	if (value === undefined || value === true) {
 		return [undefined, "--port needs a number, e.g. --port=34872"];
@@ -28,15 +45,23 @@ export function parsePort(value) {
 
 // The processes `dev` will run. Pure, so the argv assembly is testable without
 // spawning anything.
-export function buildCommands({ port, address, project: projectFile, split = true, serve = true } = {}) {
+export function buildCommands({
+	port,
+	address,
+	project: projectFile,
+	split = true,
+	serve = true,
+	luneVersion,
+} = {}) {
 	const commands = [];
 
 	if (split) {
-		commands.push({
-			label: "split",
-			command: "lune",
-			args: ["run", DEFAULT_SPLIT, "--", "--watch"],
-		});
+		const args = ["run", DEFAULT_SPLIT];
+		if (needsSeparator(luneVersion)) {
+			args.push("--");
+		}
+		args.push("--watch");
+		commands.push({ label: "split", command: "lune", args });
 	}
 
 	if (serve) {
@@ -56,9 +81,13 @@ export function buildCommands({ port, address, project: projectFile, split = tru
 	return commands;
 }
 
-function hasCommand(command) {
+// `--version` doubles as the "is it on PATH?" check and the version probe.
+function probe(command) {
 	const result = spawnSync(command, ["--version"], { encoding: "utf8" });
-	return !result.error && result.status === 0;
+	if (result.error || result.status !== 0) {
+		return { ok: false };
+	}
+	return { ok: true, version: trim(`${result.stdout ?? ""}${result.stderr ?? ""}`) };
 }
 
 // Prefix every line so two interleaved streams stay readable. Chunks don't
@@ -103,13 +132,23 @@ export async function run(args, options = {}) {
 		term.fail(`no ${DEFAULT_SPLIT}.luau here — is this a Boil project?`);
 	}
 
-	const commands = buildCommands({ port, address: options.address, project: args[0], split, serve });
+	// Probe before assembling argv — the splitter's flags depend on which Lune
+	// is installed.
+	const missing = (command) => term.fail(`\`${command}\` isn't installed or isn't on PATH — run \`rokit install\``);
 
-	for (const { command } of commands) {
-		if (!hasCommand(command)) {
-			term.fail(`\`${command}\` isn't installed or isn't on PATH — run \`rokit install\``);
+	let luneVersion;
+	if (split) {
+		const lune = probe("lune");
+		if (!lune.ok) {
+			missing("lune");
 		}
+		luneVersion = lune.version;
 	}
+	if (serve && !probe("rojo").ok) {
+		missing("rojo");
+	}
+
+	const commands = buildCommands({ port, address: options.address, project: args[0], split, serve, luneVersion });
 
 	const paints = { split: term.cyan, rojo: term.green };
 

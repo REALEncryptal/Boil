@@ -4,7 +4,8 @@
 -- *.client.luau -> build/client/<Feature>/<name>.luau
 -- *.ui.luau     -> build/shared/<Feature>/<name>.luau  (suffix stripped)
 -- everything else (init.luau, plain *.luau) -> build/shared/<Feature>/<same-name>
--- Run: `lune run tools/split` (one-shot) or `lune run tools/split -- --watch`
+-- Run: `lune run tools/split` (one-shot) or `lune run tools/split --watch`
+-- (on Lune < 0.9 the flag needs a `--` separator: `lune run tools/split -- --watch`)
 --
 -- The build is incremental: only changed files are written, stale files are
 -- deleted in place, and the three realm dirs are never removed. The previous
@@ -200,8 +201,19 @@ local function watch()
 	end
 end
 
-local args = process.args
-if args[1] == "--watch" then
+-- Scan the whole arg list rather than checking args[1]. Lune 0.9 stopped
+-- sinking flags passed to `lune run`, so `-- --watch` now arrives as two
+-- arguments ("--", "--watch") instead of one. Looking for the flag anywhere
+-- keeps both invocations working.
+local watching = false
+for _, arg in process.args do
+	if arg == "--watch" then
+		watching = true
+		break
+	end
+end
+
+if watching then
 	watch()
 else
 	build()

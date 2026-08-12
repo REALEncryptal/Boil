@@ -15,8 +15,8 @@ Roblox scaffold using **Rojo + Wally + React (jsdotlua)** in a **Feature-Sliced 
 ```bash
 rokit install             # one-time: installs rojo, wally, lune
 wally install             # populate Packages/
-lune run tools/split -- --watch   # terminal 1
-rojo serve                        # terminal 2
+lune run tools/split --watch   # terminal 1
+rojo serve                     # terminal 2
 # connect from Roblox Studio's Rojo plugin
 ```
 

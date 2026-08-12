@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildCommands, parsePort } from "../src/dev.js";
+import { buildCommands, needsSeparator, parsePort } from "../src/dev.js";
 
 describe("parsePort", () => {
 	it("accepts a port in range", () => {
@@ -35,7 +35,7 @@ describe("buildCommands", () => {
 
 		const [split, rojo] = commands;
 		assert.equal(split.command, "lune");
-		assert.deepEqual(split.args, ["run", "tools/split", "--", "--watch"]);
+		assert.deepEqual(split.args, ["run", "tools/split", "--watch"]);
 		assert.equal(rojo.command, "rojo");
 		assert.deepEqual(rojo.args, ["serve"]);
 	});
@@ -69,5 +69,30 @@ describe("buildCommands", () => {
 	it("omits the port when none is given, so rojo keeps its default", () => {
 		const [, rojo] = buildCommands({ port: undefined });
 		assert.equal(rojo.args.includes("--port"), false);
+	});
+
+	it("puts the `--` separator back for a Lune that still sinks flags", () => {
+		const [split] = buildCommands({ luneVersion: "lune 0.8.9" });
+		assert.deepEqual(split.args, ["run", "tools/split", "--", "--watch"]);
+	});
+});
+
+describe("needsSeparator", () => {
+	it("is true only for Lune older than 0.9, which sinks `lune run` flags", () => {
+		for (const version of ["lune 0.8.9", "0.8.0", "lune 0.7.11"]) {
+			assert.equal(needsSeparator(version), true, `${version} should need --`);
+		}
+	});
+
+	it("is false from 0.9 on, where `--` would reach the script literally", () => {
+		for (const version of ["lune 0.9.0", "lune 0.10.5", "1.0.0"]) {
+			assert.equal(needsSeparator(version), false, `${version} should not need --`);
+		}
+	});
+
+	it("assumes new Lune when the version can't be read", () => {
+		for (const version of [undefined, "", "lune (unknown)"]) {
+			assert.equal(needsSeparator(version), false);
+		}
 	});
 });

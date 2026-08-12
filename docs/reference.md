@@ -6,7 +6,7 @@
 | ----- | -------- | ----------------------------------------------------------- |
 | rojo  | 7.4.4    | Syncs project tree to Roblox Studio                          |
 | wally | 0.3.2    | Roblox package manager (reads `wally.toml`, writes `Packages/`) |
-| lune  | 0.8.9    | Runs `tools/split.luau` outside Roblox                       |
+| lune  | 0.10.5   | Runs `tools/split.luau` outside Roblox                       |
 
 ## Wally dependencies (wally.toml)
 
@@ -32,9 +32,11 @@
 ### CLI
 
 ```bash
-lune run tools/split             # one-shot rebuild of build/
-lune run tools/split -- --watch  # rebuild when files under src/features/ change
+lune run tools/split          # one-shot rebuild of build/
+lune run tools/split --watch  # rebuild when files under src/features/ change
 ```
+
+Lune 0.9 stopped sinking flags passed to `lune run`, so `--watch` goes straight through — on an older Lune it needs a separator (`lune run tools/split -- --watch`). The splitter accepts both forms, and `boil dev` reads `lune --version` and picks the right one for you.
 
 `--watch` polls every 500ms using `fs.metadata().modifiedAt.unixTimestamp`. Builds are incremental: only changed files are written and stale files are deleted in place. The three realm directories (`build/shared`, `build/server`, `build/client`) are preserved across runs so Rojo's file watcher never sees them vanish — newly-added feature folders sync without needing a `rojo serve` restart.
 

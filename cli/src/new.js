@@ -49,11 +49,11 @@ colocated feature code to the right Roblox service at sync time.
 ## Getting started
 
 \`\`\`bash
-rokit install                     # rojo, wally, lune
-wally install                     # populate Packages/
+rokit install                  # rojo, wally, lune
+wally install                  # populate Packages/
 
-lune run tools/split -- --watch   # terminal 1 — rebuild build/ on change
-rojo serve                        # terminal 2 — sync to Studio
+lune run tools/split --watch   # terminal 1 — rebuild build/ on change
+rojo serve                     # terminal 2 — sync to Studio
 \`\`\`
 
 Then connect from Studio's Rojo plugin.
@@ -258,9 +258,9 @@ export async function run(args, options = {}) {
 	term.print(term.bold("Next"));
 	term.info(`cd ${name}`);
 	term.info("rokit install && wally install");
-	term.info("boil setup                        # connect a package index");
-	term.info("lune run tools/split -- --watch   # terminal 1");
-	term.info("rojo serve                        # terminal 2");
+	term.info("boil setup                     # connect a package index");
+	term.info("lune run tools/split --watch   # terminal 1");
+	term.info("rojo serve                     # terminal 2");
 	term.print("");
 	term.print(term.dim("Then connect from Studio's Rojo plugin. Browse packages with `boil explore`."));
 	term.print("");
