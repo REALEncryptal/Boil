@@ -434,6 +434,15 @@ it. One global install now serves every Boil project on the machine.
 | `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
 
+Two versions answer to the name Boil: the framework inside a project, which
+`boil upgrade` replaces, and the CLI, which comes from npm. `upgrade` can't
+update the CLI — a project-scoped command has no business reaching outside the
+project — so instead any command ends with a small toast when a newer CLI is
+published, showing the version jump and `npm i -g @encryptal/boil@latest`. The
+registry is asked at most once a day (cached in `~/.boil/version-check.json`,
+failures included), the toast never appears in a pipe or in CI, and
+`BOIL_NO_UPDATE_NOTIFIER=1` silences it.
+
 ### Setting up (`boil setup`)
 
 The index is a git repo that has to exist before anything can be published to it.

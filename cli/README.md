@@ -79,6 +79,26 @@ the compatibility rules — is in
 Set `BOIL_NONINTERACTIVE=1` (or `CI`) to make every prompt fail loudly instead of
 waiting on input — each interactive action has a scriptable twin.
 
+## Staying up to date
+
+Two version numbers answer to the name Boil and they move independently: the
+*framework* inside a project (`boil upgrade`) and this *CLI* (npm). Nothing in a
+project can update the CLI, so when a newer one is published a command ends with
+a toast:
+
+```
+  ╭─────────────────────────────────╮
+  │ Update available  0.3.4 → 0.4.1 │
+  │ npm i -g @encryptal/boil@latest │
+  ╰─────────────────────────────────╯
+```
+
+npm is asked at most once a day and the answer is cached in
+`~/.boil/version-check.json`; a failed lookup is cached too, so being offline
+costs one slow command rather than every command. The toast stays out of pipes
+and CI, and `BOIL_NO_UPDATE_NOTIFIER=1` (or npm's `NO_UPDATE_NOTIFIER`) turns it
+off entirely.
+
 ## Developing
 
 ```bash
