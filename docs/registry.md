@@ -39,13 +39,20 @@ checkout that hasn't run `rokit install` yet.
 ### Starting a new project
 
 ```bash
-npm i -g @encryptal/boil
+npm i -g @encryptal/boil   # also bootstraps Rokit, unless it's already installed
 boil new my-game && cd my-game
 rokit install && wally install
 
 boil setup        # names the project, creates/connects the index, caches it
 boil explore      # browse and install
 ```
+
+The npm install brings [Rokit](https://github.com/rojo-rbx/rokit) with it — the
+toolchain manager behind `rojo`, `wally` and `lune`, which a Boil project can't
+be built or synced without. It's skipped when Rokit is already installed, never
+fails the npm install, and is disabled by `BOIL_SKIP_ROKIT=1` or
+`--ignore-scripts`. Rokit lands in `~/.rokit/bin` and puts itself on PATH via
+your shell profile, so `rokit install` above may need a fresh terminal.
 
 `boil new` clones the framework, strips the parts that belong to *its* repo
 rather than to your game (the CLI itself, the framework's LICENSE, its lockfile),
