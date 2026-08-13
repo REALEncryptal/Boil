@@ -42,7 +42,7 @@ Or do it by hand, in two terminals:
 
 ```bash
 # terminal 1 — regenerate build/ whenever a file under src/features/ changes
-lune run tools/split -- --watch
+lune run tools/split --watch
 
 # terminal 2 — serve the Rojo project to Studio
 rojo serve

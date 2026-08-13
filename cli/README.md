@@ -63,10 +63,30 @@ boil add company:acme/shop        # qualify when two registries share a name
 the compatibility rules — is in
 [docs/registry.md](https://github.com/REALEncryptal/Boil/blob/main/docs/registry.md).
 
+## Installing
+
+```bash
+npm i -g @encryptal/boil
+```
+
+Boil is a Roblox toolchain, so the install also bootstraps
+[Rokit](https://github.com/rojo-rbx/rokit) — the toolchain manager that provides
+`rojo`, `wally` and `lune`. Without those, nothing the CLI scaffolds can be built
+or synced, and being told to go install something else is a poor first five
+minutes.
+
+The bootstrap does nothing when Rokit is already present, never fails the npm
+install (a failure prints the manual install link and moves on), and is off when
+`BOIL_SKIP_ROKIT=1` is set or npm runs with `--ignore-scripts`. Rokit installs
+itself to `~/.rokit/bin` and adds that to your shell profile, so a new terminal
+picks it up. Set `GITHUB_PAT` if you're behind a shared IP that's hitting
+GitHub's anonymous rate limit — the ambient `GITHUB_TOKEN` from a CI job is
+deliberately ignored.
+
 ## What it expects
 
-- **Node 18.17+.** No runtime dependencies; TOML, semver and the prompts are all
-  in this package, so a global install pulls nothing else in.
+- **Node 18.17+.** No runtime dependencies; TOML, semver, the zip reader and the
+  prompts are all in this package, so a global install pulls nothing else in.
 - **`git` on PATH.** Every fetch, publish and index refresh shells out to it —
   that's what makes private packages work with no token plumbing.
 - **A Boil project.** Commands that touch project files walk up from the current
@@ -78,6 +98,26 @@ the compatibility rules — is in
 
 Set `BOIL_NONINTERACTIVE=1` (or `CI`) to make every prompt fail loudly instead of
 waiting on input — each interactive action has a scriptable twin.
+
+## Staying up to date
+
+Two version numbers answer to the name Boil and they move independently: the
+*framework* inside a project (`boil upgrade`) and this *CLI* (npm). Nothing in a
+project can update the CLI, so when a newer one is published a command ends with
+a toast:
+
+```
+  ╭─────────────────────────────────╮
+  │ Update available  0.3.4 → 0.4.1 │
+  │ npm i -g @encryptal/boil@latest │
+  ╰─────────────────────────────────╯
+```
+
+npm is asked at most once a day and the answer is cached in
+`~/.boil/version-check.json`; a failed lookup is cached too, so being offline
+costs one slow command rather than every command. The toast stays out of pipes
+and CI, and `BOIL_NO_UPDATE_NOTIFIER=1` (or npm's `NO_UPDATE_NOTIFIER`) turns it
+off entirely.
 
 ## Developing
 

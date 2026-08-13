@@ -230,4 +230,9 @@ export async function main(argv) {
 	}
 
 	await handler(parsed);
+
+	// Last thing printed, after the command has had its say. Skipped entirely on
+	// the early returns above — `boil --version` is parsed by scripts, and help
+	// text is not the place to be sold an update.
+	await self.notify();
 }

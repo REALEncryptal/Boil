@@ -1,6 +1,6 @@
 {
 	"name": "@encryptal/boil",
-	"version": "0.3.3",
+	"version": "0.4.0",
 	"description": "Package manager for Boil — install and publish Roblox features and skins from a git-backed index",
 	"type": "module",
 	"bin": {
@@ -11,11 +11,13 @@
 	},
 	"files": [
 		"bin",
+		"scripts",
 		"src",
 		"README.md"
 	],
 	"scripts": {
 		"test": "node --test test/*.test.js",
+		"postinstall": "node scripts/postinstall.js",
 		"prepublishOnly": "npm test"
 	},
 	"publishConfig": {

@@ -39,13 +39,20 @@ checkout that hasn't run `rokit install` yet.
 ### Starting a new project
 
 ```bash
-npm i -g @encryptal/boil
+npm i -g @encryptal/boil   # also bootstraps Rokit, unless it's already installed
 boil new my-game && cd my-game
 rokit install && wally install
 
 boil setup        # names the project, creates/connects the index, caches it
 boil explore      # browse and install
 ```
+
+The npm install brings [Rokit](https://github.com/rojo-rbx/rokit) with it — the
+toolchain manager behind `rojo`, `wally` and `lune`, which a Boil project can't
+be built or synced without. It's skipped when Rokit is already installed, never
+fails the npm install, and is disabled by `BOIL_SKIP_ROKIT=1` or
+`--ignore-scripts`. Rokit lands in `~/.rokit/bin` and puts itself on PATH via
+your shell profile, so `rokit install` above may need a fresh terminal.
 
 `boil new` clones the framework, strips the parts that belong to *its* repo
 rather than to your game (the CLI itself, the framework's LICENSE, its lockfile),
@@ -62,7 +69,7 @@ install once, not something every game vendors.
 
 `setup` is once per project. It creates the index repo on GitHub if it doesn't
 exist yet — see [Setting up](#setting-up-boil-setup) — and writes the URL into
-`boil.toml`. Then the normal dev loop: `lune run tools/split -- --watch` in one
+`boil.toml`. Then the normal dev loop: `lune run tools/split --watch` in one
 terminal, `rojo serve` in another.
 
 If someone clones your game later, `boil install` restores anything in
@@ -433,6 +440,15 @@ it. One global install now serves every Boil project on the machine.
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
 | `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
+
+Two versions answer to the name Boil: the framework inside a project, which
+`boil upgrade` replaces, and the CLI, which comes from npm. `upgrade` can't
+update the CLI — a project-scoped command has no business reaching outside the
+project — so instead any command ends with a small toast when a newer CLI is
+published, showing the version jump and `npm i -g @encryptal/boil@latest`. The
+registry is asked at most once a day (cached in `~/.boil/version-check.json`,
+failures included), the toast never appears in a pipe or in CI, and
+`BOIL_NO_UPDATE_NOTIFIER=1` silences it.
 
 ### Setting up (`boil setup`)
 
