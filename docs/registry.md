@@ -87,9 +87,11 @@ boil publish src/features/Shop    # or name it
 boil publish src/features/Shop --dry-run   # run the gate, write nothing
 ```
 
-With no `boil.toml` in the folder, this prompts for scope/name/description/
-version, writes the manifest, and stops. Open it and fill in what it can't know —
-dependencies, Wally requirements, Studio assets:
+With no `boil.toml` in the folder, this asks four questions —
+scope, name, description, version — writes the manifest, and offers to carry
+straight on. It never asks for a git URL: the registry holds the package, so
+there's no second repo to name. Say no if you want to fill in what it can't
+know first — dependencies, Wally requirements, Studio assets:
 
 ```toml
 [package]
