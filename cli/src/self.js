@@ -12,6 +12,7 @@
 // one it means, `upgrade` reports both, and every other command ends with a
 // toast when there's a newer CLI on npm (see `notify`).
 
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import * as config from "./config.js";
 import * as semver from "./semver.js";
 import * as term from "./term.js";
-import { isFile, readFile, writeFile } from "./util.js";
+import { isFile, readFile, trim, writeFile } from "./util.js";
 
 export const PACKAGE = "@encryptal/boil";
 export const REGISTRY = "https://registry.npmjs.org";
@@ -29,6 +30,29 @@ export const UPDATE_COMMAND = `npm i -g ${PACKAGE}@latest`;
 // along on ordinary commands, so the cost has to be near zero: one lookup a day,
 // every other run reads the cached answer off disk.
 export const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// How this copy of the CLI got here, which decides both whether it can update
+// itself and what command would do it. Installing with pnpm and updating with
+// npm leaves two copies and a confusing PATH, so the manager has to match.
+const MANAGERS = [
+	{ manager: "pnpm", marker: /[\\/]pnpm[\\/]/i, command: (spec) => ["pnpm", "add", "-g", spec] },
+	{ manager: "yarn", marker: /[\\/]yarn[\\/]/i, command: (spec) => ["yarn", "global", "add", spec] },
+	{ manager: "bun", marker: /[\\/]\.bun[\\/]/i, command: (spec) => ["bun", "add", "-g", spec] },
+	{ manager: "npx", marker: /[\\/]_npx[\\/]/i, command: undefined },
+	{ manager: "npm", marker: /[\\/]node_modules[\\/]/i, command: (spec) => ["npm", "i", "-g", spec] },
+];
+
+export function installKind(dir = path.dirname(fileURLToPath(import.meta.url))) {
+	for (const entry of MANAGERS) {
+		if (entry.marker.test(dir)) {
+			return { manager: entry.manager, command: entry.command?.(`${PACKAGE}@latest`), dir };
+		}
+	}
+	// No node_modules anywhere in the path: this is a checkout being run in
+	// place (`node bin/boil.js`), where updating the published copy would change
+	// nothing about the code that's running.
+	return { manager: "source", command: undefined, dir };
+}
 
 export function localVersion() {
 	try {
@@ -194,14 +218,111 @@ export function enabled(env = process.env, tty = process.stdout.isTTY) {
 	return Boolean(tty);
 }
 
+// Run the package manager's install. Deliberately the last thing a process
+// does: replacing the package directory under a running node process is asking
+// for a half-loaded module, so nothing may import anything after this.
+export function update({ spawnImpl = spawnSync, install = installKind() } = {}) {
+	if (!install.command) {
+		const reason =
+			install.manager === "source"
+				? "this is a source checkout, not an installed copy — `git pull` instead"
+				: `it was run through ${install.manager}, which fetches a fresh copy every time`;
+		return { ok: false, reason };
+	}
+
+	const [command, ...args] = install.command;
+	const result = spawnImpl(command, args, { encoding: "utf8" });
+
+	if (result.error) {
+		return { ok: false, reason: `could not run \`${command}\` (${result.error.code ?? result.error.message})` };
+	}
+	if (result.status !== 0) {
+		const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+		// The overwhelmingly common failure: a global prefix the user can't write
+		// to. Saying "permission" is more useful than replaying npm's stack.
+		const permission = /EACCES|EPERM|permission denied/i.test(output);
+		return {
+			ok: false,
+			reason: permission
+				? `no permission to write the global install — try \`sudo ${install.command.join(" ")}\``
+				: `\`${install.command.join(" ")}\` exited ${result.status}`,
+			output: trim(output),
+		};
+	}
+
+	return { ok: true, command: install.command.join(" ") };
+}
+
+// `boil self-update`, and what the toast runs when you say yes.
+export async function selfUpdate({ silent = false } = {}) {
+	const result = await check({ cache: false, timeoutMs: 4000 });
+
+	if (result.status === undefined) {
+		term.warn("couldn't reach npm to check for a newer version");
+		return false;
+	}
+	if (result.status !== "behind") {
+		if (!silent) {
+			term.ok(`boil ${result.local} is already the newest`);
+		}
+		return false;
+	}
+
+	term.info(`updating ${result.local} → ${result.latest}…`);
+	const outcome = update();
+	if (!outcome.ok) {
+		term.warn(`couldn't update — ${outcome.reason}`);
+		if (outcome.output) {
+			term.print(term.dim(outcome.output.split("\n").slice(-3).join("\n")));
+		}
+		return false;
+	}
+
+	said = true;
+	term.ok(`updated to ${result.latest} — the next \`boil\` runs it`);
+	return true;
+}
+
 // What every command ends with. Nothing in here may fail or hang the command it
 // hangs off: the lookup is cached, short-fused, and wrapped.
+//
+// Three behaviours, set by `[cli] autoUpdate` in ~/.boil/config.toml:
+//   "prompt" (default) — the toast, plus an offer to run the update now
+//   true / "always"    — update without asking
+//   false / "never"    — the toast only
 export async function notify(options = {}) {
 	if (said || !enabled()) {
 		return false;
 	}
+
 	try {
-		return toast(await check({ cache: true, timeoutMs: 1500, ...options }));
+		const result = await check({ cache: true, timeoutMs: 1500, ...options });
+		if (result.status !== "behind") {
+			return false;
+		}
+
+		const mode = config.setting("autoUpdate", "prompt");
+		const install = installKind();
+
+		// Nothing to offer when this copy can't update itself; say what it is and
+		// let the toast stand.
+		if (mode === "never" || mode === false || !install.command) {
+			return toast(result);
+		}
+
+		if (mode === true || mode === "always") {
+			term.info(`boil ${result.local} → ${result.latest}, updating…`);
+			return (await selfUpdate({ silent: true })) || toast(result);
+		}
+
+		toast(result);
+		said = false; // the toast is the question's context, so it may be shown again
+		if (!(await term.confirm("Update now?"))) {
+			said = true;
+			term.info(term.dim("set `autoUpdate = false` under [cli] in ~/.boil/config.toml to stop asking"));
+			return true;
+		}
+		return await selfUpdate({ silent: true });
 	} catch {
 		return false;
 	}

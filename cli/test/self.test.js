@@ -8,6 +8,8 @@ import { stripAnsi } from "../src/term.js";
 import {
 	PACKAGE,
 	check,
+	installKind,
+	update,
 	enabled,
 	latestVersion,
 	localVersion,
@@ -241,5 +243,88 @@ describe("enabled", () => {
 		assert.equal(enabled({ CI: "true" }, true), false);
 		assert.equal(enabled({ BOIL_NO_UPDATE_NOTIFIER: "1" }, true), false);
 		assert.equal(enabled({ NO_UPDATE_NOTIFIER: "1" }, true), false);
+	});
+});
+
+describe("installKind", () => {
+	it("knows which package manager put it there", () => {
+		const cases = {
+			"/usr/lib/node_modules/@encryptal/boil/src": "npm",
+			"C:\\Users\\a\\AppData\\Roaming\\npm\\node_modules\\@encryptal\\boil\\src": "npm",
+			"/home/a/Library/pnpm/global/5/node_modules/@encryptal/boil/src": "pnpm",
+			"/home/a/.config/yarn/global/node_modules/@encryptal/boil/src": "yarn",
+			"/home/a/.bun/install/global/node_modules/@encryptal/boil/src": "bun",
+			"/home/a/.npm/_npx/2f3a/node_modules/@encryptal/boil/src": "npx",
+		};
+		for (const [dir, manager] of Object.entries(cases)) {
+			assert.equal(installKind(dir).manager, manager, dir);
+		}
+	});
+
+	// Updating the published copy would change nothing about the code running.
+	it("recognises a source checkout", () => {
+		const install = installKind("/home/a/Dev/Boil/cli/src");
+		assert.equal(install.manager, "source");
+		assert.equal(install.command, undefined);
+	});
+
+	it("updates with the manager that installed it", () => {
+		assert.deepEqual(installKind("/usr/lib/node_modules/@encryptal/boil/src").command, [
+			"npm",
+			"i",
+			"-g",
+			"@encryptal/boil@latest",
+		]);
+		assert.deepEqual(installKind("/x/pnpm/global/5/node_modules/@encryptal/boil/src").command, [
+			"pnpm",
+			"add",
+			"-g",
+			"@encryptal/boil@latest",
+		]);
+		// npx fetches a fresh copy every run, so there's nothing to update.
+		assert.equal(installKind("/x/_npx/1/node_modules/@encryptal/boil/src").command, undefined);
+	});
+});
+
+describe("update", () => {
+	const npm = { manager: "npm", command: ["npm", "i", "-g", "@encryptal/boil@latest"] };
+
+	it("runs the install command", () => {
+		let ran;
+		const result = update({
+			install: npm,
+			spawnImpl: (command, args) => {
+				ran = [command, ...args];
+				return { status: 0, stdout: "added 1 package" };
+			},
+		});
+		assert.equal(result.ok, true);
+		assert.deepEqual(ran, ["npm", "i", "-g", "@encryptal/boil@latest"]);
+	});
+
+	// The overwhelmingly common failure, and the one where npm's own output is
+	// least helpful.
+	it("turns a permissions failure into the command that fixes it", () => {
+		const result = update({
+			install: npm,
+			spawnImpl: () => ({ status: 243, stderr: "npm error code EACCES\nnpm error syscall mkdir" }),
+		});
+		assert.equal(result.ok, false);
+		assert.match(result.reason, /sudo npm i -g @encryptal\/boil@latest/);
+	});
+
+	it("says why a source checkout can't update itself", () => {
+		const result = update({ install: { manager: "source", command: undefined }, spawnImpl: () => assert.fail("no spawn") });
+		assert.equal(result.ok, false);
+		assert.match(result.reason, /source checkout/);
+	});
+
+	it("reports a missing package manager rather than throwing", () => {
+		const result = update({
+			install: npm,
+			spawnImpl: () => ({ error: Object.assign(new Error("spawn npm ENOENT"), { code: "ENOENT" }) }),
+		});
+		assert.equal(result.ok, false);
+		assert.match(result.reason, /could not run `npm`/);
 	});
 });
