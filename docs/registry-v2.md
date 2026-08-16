@@ -172,9 +172,11 @@ index and say so instead of finding no packages.
 | 1 | v2 resolve + install + publish, `registry.toml`, lockfile SHA | 0.5.0 |
 | 2 | `boil migrate`, old-format detection | 0.5.0 |
 | 3 | The hub, auto-refresh, the registry-target prompt | 0.5.0 |
+| 3b | The interactive registry manager | 0.6.0 |
 
-All three landed together. Phases 1 and 2 had to — migration is useless without
-the format, and the format is hostile without migration.
+Phases 1–3 landed together in 0.5.0; the registry manager followed in 0.6.0.
+Phases 1 and 2 had to ship together — migration is useless without the format,
+and the format is hostile without migration.
 
 ## Known trade-offs
 
