@@ -38,6 +38,7 @@ Develop
   dev [project-file]          run the splitter (watch) and rojo serve together
                               --port=34872 to change the Rojo port
   upgrade                     pull a newer framework in; features/skins untouched
+  self-update                 update the CLI itself from npm
   migrate <old-index-url>     convert a v1 index into this registry, once
 
 Browse
@@ -182,6 +183,7 @@ const HANDLERS = {
 			template: typeof parsed.flags.template === "string" ? parsed.flags.template : undefined,
 			ref: typeof parsed.flags.ref === "string" ? parsed.flags.ref : undefined,
 		}),
+	"self-update": () => self.selfUpdate(),
 	explore: () => explorer.run(),
 	search: (parsed) => commands.search(parsed.args),
 	info: (parsed) => commands.info(parsed.args),

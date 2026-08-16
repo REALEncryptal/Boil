@@ -42,6 +42,7 @@ boil add company:acme/shop        # qualify when two registries share a name
 | `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
 | `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
 | *(no command)* | Opens the hub — browse, installed, publish, registries, dev — in a terminal. Piped or in CI it prints usage instead. |
+| `self-update` | Update the CLI itself from npm, using whichever package manager installed it. |
 | `migrate <old-index-url>` | Convert a v1 index (listings pointing at other repos) into this registry, once. `--dry-run`, `--registry=`. |
 | `upgrade` | Pull a newer framework into this game. Replaces `src/shared`, `src/client`, `src/server`, `tools/`; never touches features or skins. `--dry-run`, `--ref=<tag>`. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
@@ -117,11 +118,30 @@ a toast:
   ╰─────────────────────────────────╯
 ```
 
+…and offers to run it for you. Say yes and it updates in place; the next `boil`
+is the new one. `boil self-update` does the same on demand.
+
+The update runs **the package manager that installed it** — pnpm stays pnpm,
+yarn stays yarn — because installing with one and updating with another leaves
+two copies and a confusing PATH. A source checkout and an `npx` run are both
+told they have nothing to update, since neither would change the code that's
+running. A permissions failure comes back as the `sudo …` line that fixes it
+rather than as npm's stack.
+
+How much it does on its own is one setting in `~/.boil/config.toml`:
+
+```toml
+[cli]
+autoUpdate = "prompt"   # default: toast, then ask
+# autoUpdate = true     # update without asking
+# autoUpdate = false    # toast only, never ask
+```
+
 npm is asked at most once a day and the answer is cached in
 `~/.boil/version-check.json`; a failed lookup is cached too, so being offline
-costs one slow command rather than every command. The toast stays out of pipes
-and CI, and `BOIL_NO_UPDATE_NOTIFIER=1` (or npm's `NO_UPDATE_NOTIFIER`) turns it
-off entirely.
+costs one slow command rather than every command. None of it happens in pipes or
+CI, and `BOIL_NO_UPDATE_NOTIFIER=1` (or npm's `NO_UPDATE_NOTIFIER`) turns the
+whole thing off.
 
 ## Developing
 

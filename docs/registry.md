@@ -476,8 +476,10 @@ update the CLI — a project-scoped command has no business reaching outside the
 project — so instead any command ends with a small toast when a newer CLI is
 published, showing the version jump and `npm i -g @encryptal/boil@latest`. The
 registry is asked at most once a day (cached in `~/.boil/version-check.json`,
-failures included), the toast never appears in a pipe or in CI, and
-`BOIL_NO_UPDATE_NOTIFIER=1` silences it.
+failures included), and it offers to run the update for you — `[cli] autoUpdate`
+in `~/.boil/config.toml` chooses between asking (default), updating silently, and
+never doing either. `boil self-update` does it on demand. None of it happens in a
+pipe or in CI, and `BOIL_NO_UPDATE_NOTIFIER=1` silences it.
 
 ### Setting up (`boil setup`)
 
