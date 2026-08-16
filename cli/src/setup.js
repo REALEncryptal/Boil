@@ -79,7 +79,7 @@ export function parseRepoUrl(url) {
 }
 
 // The owner of this checkout's origin, used to guess a default index URL.
-function originOwner() {
+export function originOwner() {
 	const [ok, output] = source.git(["remote", "get-url", "origin"]);
 	if (!ok) {
 		return undefined;
@@ -233,7 +233,9 @@ function setupLocalIndex(target) {
 	return true;
 }
 
-async function ensureIndex(url, options) {
+// Exported so the interactive registry manager can create a registry the same
+// way `setup` does, rather than growing a second implementation of it.
+export async function ensureIndex(url, options) {
 	if (isDir(url) || options.localIndex) {
 		return setupLocalIndex(url);
 	}

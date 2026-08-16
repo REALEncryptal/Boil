@@ -47,6 +47,7 @@ Browse
   refresh                     update every cached index
 
 Registries
+  registry                    add, create, remove and refresh registries
   registry list               where packages are looked up, and from which layer
   registry add <name> <url>   add one (--project to scope it to this game)
   registry remove <name>      remove one

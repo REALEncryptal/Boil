@@ -49,7 +49,7 @@ export function summarize({ inProject = true } = {}) {
 	rows.push({
 		label: "Registries",
 		note: configured.length === 1 ? names : `${configured.length} — ${names}`,
-		run: async () => registries.list(),
+		run: () => registries.browse(),
 	});
 
 	if (inProject) {
