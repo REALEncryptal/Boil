@@ -155,7 +155,13 @@ async function createWithApi(owner, name, isPrivate) {
 	return [false, lastError];
 }
 
-// Put a packages/ directory and a README in the index, if they aren't there.
+// The registry's own name, for registry.toml — the repo name, or the folder's.
+function name(url) {
+	return String(url).replace(/\/$/, "").split("/").pop().replace(/\.git$/, "");
+}
+
+// Put a packages/ directory, a registry.toml and a README in the index, if they
+// aren't there.
 function seedIndex(url) {
 	const work = tempDir("index-setup");
 	removeDir(work);
@@ -167,12 +173,17 @@ function seedIndex(url) {
 	}
 
 	let changed = false;
-	if (!isDir(path.join(work, "packages"))) {
-		writeFile(path.join(work, "packages", ".gitkeep"), "");
+	if (!isDir(path.join(work, registry.PACKAGES))) {
+		writeFile(path.join(work, registry.PACKAGES, ".gitkeep"), "");
 		changed = true;
 	}
 	if (!isFile(path.join(work, "README.md"))) {
 		writeFile(path.join(work, "README.md"), README);
+		changed = true;
+	}
+	// Stamps the layout so `publish` and `add` know this holds packages rather
+	// than links to other repos.
+	if (registry.writeFormat(work, name(url))) {
 		changed = true;
 	}
 
@@ -210,10 +221,11 @@ function seedIndex(url) {
 }
 
 function setupLocalIndex(target) {
-	ensureDir(path.join(target, "packages"));
-	if (!isFile(path.join(target, "packages", ".gitkeep"))) {
-		writeFile(path.join(target, "packages", ".gitkeep"), "");
+	ensureDir(path.join(target, registry.PACKAGES));
+	if (!isFile(path.join(target, registry.PACKAGES, ".gitkeep"))) {
+		writeFile(path.join(target, registry.PACKAGES, ".gitkeep"), "");
 	}
+	registry.writeFormat(target, name(target));
 	if (!isFile(path.join(target, "README.md"))) {
 		writeFile(path.join(target, "README.md"), README);
 	}

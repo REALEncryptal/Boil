@@ -17,6 +17,8 @@ import * as explorer from "./explorer.js";
 import * as newProject from "./new.js";
 import * as project from "./project.js";
 import * as registries from "./registries.js";
+import * as hub from "./hub.js";
+import * as migrate from "./migrate.js";
 import * as publish from "./publish.js";
 import * as self from "./self.js";
 import * as setup from "./setup.js";
@@ -36,6 +38,7 @@ Develop
   dev [project-file]          run the splitter (watch) and rojo serve together
                               --port=34872 to change the Rojo port
   upgrade                     pull a newer framework in; features/skins untouched
+  migrate <old-index-url>     convert a v1 index into this registry, once
 
 Browse
   explore                     interactive registry explorer
@@ -133,6 +136,7 @@ const NEEDS_PROJECT = new Set([
 	"setup",
 	"dev",
 	"upgrade",
+	"migrate",
 	"explore",
 	"add",
 	"remove",
@@ -194,6 +198,12 @@ const HANDLERS = {
 			registry: typeof parsed.flags.registry === "string" ? parsed.flags.registry : undefined,
 		}),
 	registry: (parsed) => registries.run(parsed.args, { project: parsed.flags.project === true }),
+	migrate: (parsed) =>
+		migrate.run(parsed.args, {
+			yes: parsed.flags.yes === true,
+			dryRun: parsed.flags["dry-run"] === true,
+			registry: typeof parsed.flags.registry === "string" ? parsed.flags.registry : undefined,
+		}),
 	doctor: () => commands.doctor(),
 };
 
@@ -206,6 +216,12 @@ export async function main(argv) {
 	}
 	if (!parsed.command && !config.exists() && !project.findRoot()) {
 		term.print(WELCOME);
+		return;
+	}
+	// No command in a terminal opens the hub; piped or in CI it stays a usage
+	// screen, so `boil | head` and CI logs behave as they always have.
+	if (!parsed.command && !parsed.flags.help && term.isInteractive()) {
+		await hub.run();
 		return;
 	}
 	if (!parsed.command || parsed.flags.help || parsed.command === "help") {

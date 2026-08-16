@@ -1,22 +1,38 @@
-// The package index: a git repo of manifests, one TOML file per package.
+// The package index: one git repo that *contains* the packages.
 //
-//   boil-index/packages/<scope>/<name>.toml
+//   boil-index/registry.toml            format = 2
+//   boil-index/packages/<owner>/<name>/ the package's own files, at newest
+//
+// Releases are tags — `<owner>/<name>@1.2.0` — so an older version is read out
+// of the clone you already have rather than fetched from somewhere else. That
+// is the whole point of the v2 layout: there is no second repo to create, to
+// keep in sync, or to lose. See docs/registry-v2.md.
 //
 // Cloned to ~/.boil/index/<hash> and read from there, so `explore`, `search` and
-// `list` all work offline — refreshing is an explicit action, never a hidden
-// network call on every command. A registry URL that resolves to a local
-// directory is used in place (handy for developing against an index before it's
-// published anywhere).
+// `list` work offline. A registry URL that resolves to a local directory is used
+// in place, which is how the tests drive a real registry without a network.
+//
+// The v1 layout (a listing per package, pointing at another repo) is still
+// *readable* — `boil migrate` needs it — but nothing installs from it.
 
 import crypto from "node:crypto";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import * as config from "./config.js";
+import * as manifest from "./manifest.js";
 import * as project from "./project.js";
 import * as source from "./source.js";
 import * as toml from "./toml.js";
-import { ensureDir, isDir, listFiles, readFile, removeDir, trim, writeFile } from "./util.js";
+import { copyDir, ensureDir, isDir, isFile, listFiles, readFile, removeDir, tempDir, trim, writeFile } from "./util.js";
+
+export const FORMAT_FILE = "registry.toml";
+export const PACKAGES = "packages";
+export const FORMAT = 2;
+
+// How long a fetched index is trusted before a command refreshes it in passing.
+export const MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 export const DEFAULT_URL = "https://github.com/REALEncryptal/boil-index";
 export const DEFAULT_NAME = "default";
@@ -78,16 +94,144 @@ export function refresh(target = url()) {
 		if (!ok) {
 			return [false, `could not update the index at ${dir}:\n${trim(output)}`];
 		}
+		// Tags are the release list, and `pull` alone won't drop ones deleted
+		// upstream — so ask for them explicitly.
+		source.git(["-C", dir, "fetch", "--tags", "--prune", "--prune-tags", "--quiet"]);
 		return [true, `updated ${target}`];
 	}
 
 	ensureDir(dir);
 	removeDir(dir);
-	const [ok, output] = source.git(["clone", "--depth", "1", "--quiet", target, dir]);
+	// A blobless partial clone, not a shallow one: `--depth 1` would cut off the
+	// tags that *are* the version history, while `--filter=blob:none` keeps every
+	// tag reachable and fetches old file contents only when a version is actually
+	// installed. HEAD's files arrive with the checkout, so browsing and
+	// installing the newest version stay offline.
+	const [ok, output] = source.git(["clone", "--filter=blob:none", "--quiet", target, dir]);
 	if (!ok) {
 		return [false, `could not clone the index ${target}:\n${trim(output)}`];
 	}
 	return [true, `cloned ${target}`];
+}
+
+// When the cache was last known to agree with the remote.
+export function lastFetched(dir) {
+	for (const marker of ["FETCH_HEAD", "HEAD"]) {
+		try {
+			return fs.statSync(path.join(dir, ".git", marker)).mtimeMs;
+		} catch {
+			// try the next marker
+		}
+	}
+	return undefined;
+}
+
+// Refresh in passing when the cache has gone stale. Best-effort by design: a
+// command that can work from the cache must not fail because the network is
+// down, so a failed refresh is silent and the stale copy is used.
+export function ensureFresh(target = url(), { maxAgeMs = MAX_AGE_MS, now = Date.now() } = {}) {
+	if (isDir(target)) {
+		return false;
+	}
+	const dir = localPath(target);
+	if (!dir) {
+		// Never fetched. Clone it now rather than reporting an empty registry.
+		const [cloned] = refresh(target);
+		return cloned;
+	}
+	const fetched = lastFetched(dir);
+	if (fetched !== undefined && now - fetched < maxAgeMs) {
+		return false;
+	}
+	const [ok] = refresh(target);
+	return ok;
+}
+
+// Which layout this registry uses. v1 is "no registry.toml", since that's what
+// every index written before this change looks like.
+export function formatOf(dir) {
+	const file = path.join(dir, FORMAT_FILE);
+	if (!isFile(file)) {
+		return 1;
+	}
+	try {
+		const decoded = toml.parse(readFile(file));
+		return Number(decoded.registry?.format ?? decoded.format) === 2 ? 2 : 1;
+	} catch {
+		return 1;
+	}
+}
+
+export function formatFile(name) {
+	return toml.stringify({ registry: { format: FORMAT, name } });
+}
+
+// Stamp a directory as a v2 registry. Idempotent — `setup` and `migrate` both
+// call it, and either may be running against a repo that's already stamped.
+export function writeFormat(dir, name) {
+	const file = path.join(dir, FORMAT_FILE);
+	if (isFile(file)) {
+		return false;
+	}
+	writeFile(file, formatFile(name));
+	return true;
+}
+
+// `<owner>/<name>@<version>`. Legal as a git ref: the only rule is that no tag
+// may be a directory prefix of another, and the `@<version>` suffix guarantees
+// that (the directory part is always refs/tags/<owner>/).
+export function tagFor(name, version) {
+	return `${name}@${version}`;
+}
+
+export function parseTag(tag) {
+	const at = tag.lastIndexOf("@");
+	if (at <= 0) {
+		return undefined;
+	}
+	return { name: tag.slice(0, at), version: tag.slice(at + 1) };
+}
+
+// Every release tag in one call, rather than one call per package.
+function releaseTags(dir) {
+	// `*objectname` is the commit an annotated tag points at, empty for a
+	// lightweight one — prefer it, so both kinds report the commit rather than a
+	// tag object nothing else can compare against.
+	const [ok, output] = source.git([
+		"-C",
+		dir,
+		"for-each-ref",
+		"--format=%(refname:strip=2) %(objectname) %(*objectname)",
+		"refs/tags",
+	]);
+	if (!ok) {
+		return new Map();
+	}
+
+	const byPackage = new Map();
+	for (const line of output.split("\n")) {
+		const [ref, object, dereferenced] = trim(line).split(" ");
+		const commit = dereferenced && dereferenced !== "" ? dereferenced : object;
+		const parsed = ref ? parseTag(ref) : undefined;
+		if (!parsed) {
+			continue;
+		}
+		const list = byPackage.get(parsed.name) ?? [];
+		list.push({ version: parsed.version, tag: ref, commit });
+		byPackage.set(parsed.name, list);
+	}
+	return byPackage;
+}
+
+function directories(dir) {
+	try {
+		return fs
+			.readdirSync(dir, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory() && entry.name !== ".git")
+			.map((entry) => entry.name);
+	} catch {
+		return [];
+	}
 }
 
 function parseListing(text) {
@@ -108,13 +252,10 @@ function parseListing(text) {
 	};
 }
 
-export function load(target) {
-	const dir = localPath(target);
-	if (!dir) {
-		return [];
-	}
-
-	const packagesDir = path.join(dir, "packages");
+// v1: a directory of listing files, each pointing at another repo. Only
+// `migrate` reads this now.
+export function loadV1(dir) {
+	const packagesDir = path.join(dir, PACKAGES);
 	if (!isDir(packagesDir)) {
 		return [];
 	}
@@ -130,6 +271,130 @@ export function load(target) {
 
 	listings.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 	return listings;
+}
+
+// v2: the tree is the index. Each package folder's own boil.toml describes it,
+// and its releases are the tags pointing at it.
+//
+// Compat ranges (`boil`, `contract`) are read from the manifest at HEAD and
+// attached to every release, which is approximate for older versions — the
+// authoritative check happens in `add`, against the manifest that actually comes
+// out of the tag.
+export function loadV2(dir, target) {
+	const root = path.join(dir, PACKAGES);
+	if (!isDir(root)) {
+		return [];
+	}
+
+	const tags = releaseTags(dir);
+	const listings = [];
+
+	for (const owner of directories(root)) {
+		for (const folder of directories(path.join(root, owner))) {
+			const subdir = `${PACKAGES}/${owner}/${folder}`;
+			const [pkg] = manifest.read(path.join(dir, subdir));
+			if (!pkg) {
+				continue;
+			}
+
+			const released = tags.get(pkg.name) ?? [];
+			// A local directory used as a registry may not be a git repo at all;
+			// fall back to what the manifest says so it still resolves.
+			const versions = (released.length > 0 ? released : [{ version: pkg.version, tag: undefined }]).map(
+				(release) => ({
+					...release,
+					subdir,
+					registryUrl: target,
+					boil: pkg.boil,
+					contract: pkg.contract,
+				}),
+			);
+
+			listings.push({
+				name: pkg.name,
+				kind: pkg.kind ?? "feature",
+				description: pkg.description ?? "",
+				subdir,
+				versions,
+			});
+		}
+	}
+
+	listings.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+	return listings;
+}
+
+export function load(target = url()) {
+	const dir = localPath(target);
+	if (!dir) {
+		return [];
+	}
+	return formatOf(dir) === 2 ? loadV2(dir, target) : [];
+}
+
+// A v1 index reads as empty, which would otherwise look like "nothing published
+// here". Callers use this to say something truer.
+export function needsMigration(target = url()) {
+	const dir = localPath(target);
+	return dir !== undefined && formatOf(dir) === 1 && loadV1(dir).length > 0;
+}
+
+// Copy one package out of the registry at a given release.
+//
+// The newest release is already checked out, so that case is a plain file copy —
+// no git, no network. Older ones are read out of the object store with plumbing,
+// which is also what makes a blobless clone work: only the blobs for the version
+// being installed get fetched.
+export function materialize(release) {
+	const dir = localPath(release.registryUrl);
+	if (!dir) {
+		return [undefined, `the registry ${release.registryUrl} hasn't been fetched — run \`boil refresh\``];
+	}
+
+	const live = path.join(dir, release.subdir);
+	if (release.tag === undefined || isHead(dir, release.commit)) {
+		if (!isDir(live)) {
+			return [undefined, `${release.subdir} is not in the registry`];
+		}
+		const dest = tempDir("package");
+		removeDir(dest);
+		copyDir(live, dest);
+		return [dest, undefined];
+	}
+
+	const ref = release.commit ?? release.tag;
+	const [listed, output] = source.git(["-C", dir, "ls-tree", "-r", "--name-only", ref, "--", release.subdir]);
+	if (!listed) {
+		return [undefined, `could not read ${release.subdir} at ${release.tag}:\n${trim(output)}`];
+	}
+
+	const files = output.split("\n").map(trim).filter(Boolean);
+	if (files.length === 0) {
+		return [undefined, `${release.subdir} is empty at ${release.tag}`];
+	}
+
+	const dest = tempDir("package");
+	removeDir(dest);
+	for (const file of files) {
+		const [read, contents] = source.gitBytes(["-C", dir, "show", `${ref}:${file}`]);
+		if (!read) {
+			removeDir(dest);
+			return [undefined, `could not read ${file} at ${release.tag}`];
+		}
+		const relative = file.slice(release.subdir.length + 1);
+		const out = path.join(dest, relative);
+		ensureDir(path.dirname(out));
+		fs.writeFileSync(out, contents);
+	}
+	return [dest, undefined];
+}
+
+function isHead(dir, commit) {
+	if (!commit) {
+		return false;
+	}
+	const [ok, output] = source.git(["-C", dir, "rev-parse", "HEAD"]);
+	return ok && trim(output) === commit;
 }
 
 export function find(name, target) {
@@ -206,38 +471,5 @@ export function refreshAll() {
 	});
 }
 
-// The index file path a listing is published to.
-export function listingPath(indexDir, name) {
-	const [scope, pkg] = name.split("/");
-	return path.join(indexDir, "packages", scope, `${pkg}.toml`);
-}
-
-function tomlString(value) {
-	return `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-// Emitted field-by-field rather than through the generic serializer so a listing
-// always diffs cleanly in the index repo: same keys, same order, every release.
-export function serializeListing(listing) {
-	const lines = [
-		`name = ${tomlString(listing.name)}`,
-		`kind = ${tomlString(listing.kind)}`,
-		`description = ${tomlString(listing.description)}`,
-	];
-
-	const FIELDS = ["version", "source", "tag", "subdir", "boil", "contract", "published"];
-	for (const release of listing.versions) {
-		lines.push("", "[[version]]");
-		for (const field of FIELDS) {
-			if (release[field]) {
-				lines.push(`${field} = ${tomlString(release[field])}`);
-			}
-		}
-	}
-
-	return `${lines.join("\n")}\n`;
-}
-
-export function writeListing(indexDir, listing) {
-	writeFile(listingPath(indexDir, listing.name), serializeListing(listing));
-}
+// Nothing writes the v1 format any more — `migrate` reads it and that is all.
+// The writers (listingPath/serializeListing/writeListing) went with it.

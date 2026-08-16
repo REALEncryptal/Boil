@@ -32,6 +32,24 @@ function checkFlat(pkg, dir) {
 	return listFiles(dir).filter((rel) => rel.includes("/") && rel.endsWith(".luau"));
 }
 
+const REGISTRY_SOURCE = "registry+";
+
+// One way to get a package's files, wherever it came from: a v2 registry (read
+// out of the index clone) or a git URL (`add github:…`, and any lockfile entry
+// written before v2).
+export function materialize(spec) {
+	if (spec.registryUrl) {
+		registry.ensureFresh(spec.registryUrl);
+		return registry.materialize(spec);
+	}
+	if ((spec.source ?? "").startsWith(REGISTRY_SOURCE)) {
+		const registryUrl = spec.source.slice(REGISTRY_SOURCE.length);
+		registry.ensureFresh(registryUrl);
+		return registry.materialize({ registryUrl, tag: spec.tag, commit: spec.commit, subdir: spec.subdir });
+	}
+	return source.fetch({ git: (spec.source ?? "").replace(/^git\+/, ""), tag: spec.tag, subdir: spec.subdir });
+}
+
 function resolveIndexed(spec) {
 	const found = registry.resolve(spec.name, spec.registry);
 
@@ -78,24 +96,23 @@ export async function add(args, options = {}) {
 	const spec = source.parseSpec(specText);
 	let fetchSpec = spec;
 	let fromRegistry;
+	let indexed;
 
 	if (spec.name) {
 		const { listing, release } = resolveIndexed(spec);
 		fromRegistry = listing.registry;
+		indexed = release;
 		const compatibility = format.compat(release);
 		if (!compatibility.ok && !options.force) {
 			term.fail(
 				`${spec.name}@${release.version} is not compatible — ${compatibility.reason}. Pass --force to install anyway.`,
 			);
 		}
-		fetchSpec = {
-			git: (release.source ?? "").replace(/^git\+/, ""),
-			tag: release.tag,
-			subdir: release.subdir,
-		};
 	}
 
-	const [dir, fetchError] = source.fetch(fetchSpec);
+	// An indexed package comes out of the registry clone itself; `github:` and
+	// `path:` specs still fetch from wherever they point.
+	const [dir, fetchError] = indexed ? materialize(indexed) : source.fetch(fetchSpec);
 	if (!dir) {
 		term.fail(fetchError);
 	}
@@ -150,9 +167,12 @@ export async function add(args, options = {}) {
 		name: pkg.name,
 		version: pkg.version,
 		kind: pkg.kind,
-		source: source.describe(fetchSpec),
-		tag: fetchSpec.tag,
-		subdir: fetchSpec.subdir,
+		source: indexed ? `registry+${indexed.registryUrl}` : source.describe(fetchSpec),
+		tag: indexed ? indexed.tag : fetchSpec.tag,
+		// The commit the tag pointed at when this was installed. A tag can be
+		// moved; a commit can't, so `boil install` restores the same bytes later.
+		commit: indexed?.commit,
+		subdir: indexed ? indexed.subdir : fetchSpec.subdir,
 		// Which registry it came from, so `outdated` and `update` look there
 		// first rather than re-resolving a name two registries might share.
 		registry: fromRegistry,
@@ -322,11 +342,7 @@ async function updateOne(entry, force) {
 
 	const modified = isDir(entry.path) && project.fingerprint(entry.path) !== entry.fingerprint;
 	if (modified) {
-		const [fetched] = source.fetch({
-			git: (newest.source ?? "").replace(/^git\+/, ""),
-			tag: newest.tag,
-			subdir: newest.subdir,
-		});
+		const [fetched] = materialize(newest);
 		if (fetched) {
 			const { added, removed, changed } = diffDirs(entry.path, fetched);
 			removeDir(fetched);
@@ -377,11 +393,7 @@ export async function install() {
 	for (const entry of lock.read()) {
 		if (isDir(entry.path)) continue;
 
-		const [dir, error] = source.fetch({
-			git: entry.source.replace(/^git\+/, ""),
-			tag: entry.tag,
-			subdir: entry.subdir,
-		});
+		const [dir, error] = materialize(entry);
 		if (!dir) {
 			term.warn(`${entry.name}: ${error}`);
 			continue;

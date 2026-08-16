@@ -111,3 +111,21 @@ export function maxSatisfying(versions, range) {
 	}
 	return best;
 }
+
+// The next version of a given size. A pre-release bumps to its own release
+// first — 1.2.0-rc.1 patches to 1.2.0, not 1.2.1, which is what "ship it" means.
+export function bump(version, level = "patch") {
+	const parsed = parse(version);
+	if (!parsed) {
+		return undefined;
+	}
+	const { major, minor, patch, pre } = parsed;
+
+	if (level === "major") {
+		return `${major + 1}.0.0`;
+	}
+	if (level === "minor") {
+		return `${major}.${minor + 1}.0`;
+	}
+	return pre ? `${major}.${minor}.${patch}` : `${major}.${minor}.${patch + 1}`;
+}

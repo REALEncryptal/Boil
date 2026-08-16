@@ -83,7 +83,7 @@ describe("describe", () => {
 	it("shows what the index has when the local version is newer", () => {
 		const { note, ready } = describeCandidate({ pkg: { name: "me/pets", version: "0.3.0" } }, listings);
 		assert.match(note, /0\.3\.0/);
-		assert.match(note, /index has 0\.2\.0/);
+		assert.match(note, /registry has 0\.2\.0/);
 		assert.equal(ready, true);
 	});
 

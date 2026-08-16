@@ -19,12 +19,13 @@ Then, from anywhere inside a Boil checkout:
 boil dev                          # splitter (watch) + rojo serve, one terminal
 boil explore                      # browse skins & features, install from the list
 boil add encryptal/shop           # install by name
-boil publish src/features/Shop    # lint, tag, push, register
+boil publish                      # pick a feature or skin, gate it, tag it, push it
 ```
 
-There is no website. The explorer is a terminal UI over a git repo of manifests,
-so browsing works offline and private packages work through normal GitHub
-permissions.
+There is no website. The explorer is a terminal UI over one git repo that holds
+the packages themselves — so browsing works offline, installing the newest
+version is a file copy, and private packages work through normal GitHub
+permissions on a single repo.
 
 Multiple indexes are supported — the public one, your company's, a private one —
 configured per machine or per project:
@@ -40,6 +41,8 @@ boil add company:acme/shop        # qualify when two registries share a name
 | ------- | ---- |
 | `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
 | `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
+| *(no command)* | Opens the hub — browse, installed, publish, registries, dev — in a terminal. Piped or in CI it prints usage instead. |
+| `migrate <old-index-url>` | Convert a v1 index (listings pointing at other repos) into this registry, once. `--dry-run`, `--registry=`. |
 | `upgrade` | Pull a newer framework into this game. Replaces `src/shared`, `src/client`, `src/server`, `tools/`; never touches features or skins. `--dry-run`, `--ref=<tag>`. |
 | `setup [url]` | Name the project, create/connect the index, cache it. |
 | `registry list/add/remove` | Manage where packages are looked up. Machine-wide by default (`~/.boil/config.toml`), `--project` for this game only. |
@@ -56,7 +59,7 @@ boil add company:acme/shop        # qualify when two registries share a name
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game). |
-| `publish [path]` | Lint → tag → push the package repo → register the version in the index. With no path, lists this project's features and skins and asks which one. |
+| `publish [path]` | Gate → lint → write the folder into the registry → commit → tag `<owner>/<name>@<version>` → push. With no path, lists this project's features and skins and asks which one. Offers a version bump if that release exists. |
 | `doctor` | Missing dependencies, Wally gaps, packages not in the lockfile. |
 
 `boil help` lists the flags. The full picture — the package format, the index,

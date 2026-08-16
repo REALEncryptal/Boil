@@ -147,36 +147,6 @@ test("the lockfile round-trips, upserts in place, and deletes itself when empty"
 	assert.equal(fs.existsSync(lock.FILENAME), false);
 });
 
-test("a listing serializes with stable field order and reparses", (t) => {
-	sandbox(t);
-	const listing = {
-		name: "encryptal/shop",
-		kind: "feature",
-		description: 'Shop with "quotes"',
-		versions: [{ version: "1.0.0", source: "git+https://example.com/shop", tag: "v1.0.0", boil: "^0.1" }],
-	};
-
-	registry.writeListing(".", listing);
-	const emitted = fs.readFileSync("packages/encryptal/shop.toml", "utf8");
-	assert.match(emitted, /^name = .*\nkind = .*\ndescription = /);
-	assert.deepEqual(registry.find("encryptal/shop", "."), listing);
-});
-
-test("mergeRelease replaces a republished version rather than duplicating it", () => {
-	const listing = { name: "a/b", kind: "feature", description: "d", versions: [] };
-	const pkg = { name: "a/b", kind: "feature", version: "1.0.0", description: "d", repository: "https://x", boil: "^0.1" };
-
-	publish.mergeRelease(listing, pkg, "v1.0.0");
-	publish.mergeRelease(listing, { ...pkg, version: "1.1.0" }, "v1.1.0");
-	publish.mergeRelease(listing, pkg, "v1.0.0");
-
-	assert.deepEqual(
-		listing.versions.map((release) => release.version),
-		["1.0.0", "1.1.0"],
-	);
-	assert.equal(listing.versions[0].source, "git+https://x");
-});
-
 test("the publish gate catches undeclared requires and registration files", (t) => {
 	sandbox(t);
 	fs.mkdirSync("src/features/PlayerData", { recursive: true });

@@ -20,6 +20,16 @@ export function git(args, cwd) {
 	return [false, result.stderr !== "" ? result.stderr : result.stdout];
 }
 
+// Same as `git`, but hands back raw bytes — `git show <ref>:<file>` has to
+// round-trip file contents untouched, and a package may carry a binary.
+export function gitBytes(args, cwd) {
+	const result = spawnSync("git", args, { cwd, maxBuffer: 256 * 1024 * 1024 });
+	if (result.error || result.status !== 0) {
+		return [false, Buffer.alloc(0)];
+	}
+	return [true, result.stdout];
+}
+
 // "encryptal/shop@1.2.0" | "github:owner/repo@v1" | "https://…" | "path:../dir"
 export function parseSpec(text) {
 	// An scp-style URL has an @ of its own, so split off the version after it
