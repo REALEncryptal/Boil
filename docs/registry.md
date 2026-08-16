@@ -12,8 +12,9 @@ boil explore              # browse skins & features, install from the list
 boil publish src/features/Shop
 ```
 
-There is **no website**. The explorer lives in the CLI — the registry is a git
-repo of manifests, and browsing it is a terminal UI, not a browser tab.
+There is **no website**. The explorer lives in the CLI — the registry is one git
+repo holding the packages themselves, and browsing it is a terminal UI, not a
+browser tab.
 
 ## Installing the CLI
 
@@ -78,16 +79,17 @@ committed — but it repairs a missing folder.
 
 ### Publishing a feature you built
 
-Say `src/features/Shop/` works in a real game and you want it everywhere. Check
-it's publishable *before* creating any repos:
+Say `src/features/Shop/` works in a real game and you want it everywhere:
 
 ```bash
-boil publish src/features/Shop --dry-run
+boil publish                      # pick from this game's features and skins
+boil publish src/features/Shop    # or name it
+boil publish src/features/Shop --dry-run   # run the gate, write nothing
 ```
 
 With no `boil.toml` in the folder, this prompts for scope/name/description/
-version/repo URL, writes the manifest, and stops. Open it and fill in what it
-can't know — dependencies, Wally requirements, Studio assets:
+version, writes the manifest, and stops. Open it and fill in what it can't know —
+dependencies, Wally requirements, Studio assets:
 
 ```toml
 [package]
@@ -95,7 +97,6 @@ name = "encryptal/shop"
 kind = "feature"
 version = "1.0.0"
 description = "Currency shop with rotating stock"
-repository = "https://github.com/encryptal/boil-shop"
 boil = "^0.1.0"
 
 [dependencies]
@@ -115,21 +116,22 @@ folder's top level, so those would silently never build), and on registration
 files with no matching `[dependencies]` entry. Those are exactly the mistakes
 that install cleanly and then break in *someone else's* game.
 
-Then create the package repo and publish for real:
+Then publish for real. **There is no repo to create first** — the registry holds
+the package:
 
 ```bash
-# create encryptal/boil-shop on GitHub (empty), then:
 boil publish src/features/Shop
 ```
 
-It runs the gate, runs all four lints, shows what it's about to do, and asks. On
-yes: pushes the folder to `boil-shop` tagged `v1.0.0`, then registers the version
-in the index. If you lack write access to the index it says so and points you at
-a PR — the package push has already succeeded at that point.
+It runs the gate and the lints, asks which registry if more than one is
+configured, shows what it's about to do, and asks. On yes it writes the folder
+into `packages/encryptal/shop/`, commits, tags `encryptal/shop@1.0.0`, and
+pushes — one repo, one push, nothing that can half-succeed.
 
-Shipping an update is the same with `version` bumped. `--yes` skips the prompt.
-A skin is identical but `kind = "skin"`, a `contract` range, and it lives in
-`src/skins/<Name>/`.
+Shipping an update is the same with `version` bumped; publish an already-released
+version and it offers the next patch/minor/major and writes your choice into
+`boil.toml`. `--yes` skips the prompts. A skin is identical but `kind = "skin"`,
+a `contract` range, and it lives in `src/skins/<Name>/`.
 
 ### Adding a feature to a game
 
@@ -231,7 +233,7 @@ kind = "feature"            # feature | skin
 version = "1.2.0"           # semver
 description = "Currency shop with rotating stock"
 license = "MIT"
-repository = "https://github.com/encryptal/boil-shop"   # where publish pushes
+repository = "https://github.com/encryptal/boil-shop"   # optional: where it's developed
 boil = "^0.1"               # compatible Shared.Boil surface versions
 contract = "^1"             # skins only: compatible contract.VERSION range
 
@@ -274,16 +276,20 @@ transitive dependencies are resolved and installed but only recorded in the
 lockfile, so the project manifest stays a list of intent rather than a flattened
 graph.
 
-`boil-lock.toml` records what's actually on disk — resolved version, source repo,
-tag, and a **content fingerprint** of the installed folder:
+`boil-lock.toml` records what's actually on disk — resolved version, which
+registry it came from, the tag, the **commit that tag pointed at** (a tag can be
+moved; a commit can't, so a later `boil install` restores the same bytes), and a
+**content fingerprint** of the installed folder:
 
 ```toml
 [[package]]
 name = "encryptal/shop"
 version = "1.2.0"
 kind = "feature"
-source = "git+https://github.com/encryptal/boil-shop"
-tag = "v1.2.0"
+source = "registry+https://github.com/acme/boil-index"
+tag = "encryptal/shop@1.2.0"
+commit = "9d623e41f331256d5d887fefcdd6d59b3d13b981"
+subdir = "packages/encryptal/shop"
 path = "src/features/Shop"
 fingerprint = "a3f19c02"
 ```
@@ -370,34 +376,55 @@ two prefixes are reserved — a registry can't be named `github` or `path`.)
 
 ## The registry
 
-An **index repo** — one TOML file per package, listing every published version:
+**One git repo that contains the packages.** Not a list of links to other repos —
+the files themselves, versioned by tag:
 
 ```
 boil-index/
+  registry.toml                     # format = 2
   packages/
     encryptal/
-      shop.toml
-      neon.toml
+      shop/
+        boil.toml
+        ShopService.server.luau
+      neon/
+        boil.toml
     boil/
-      playerdata.toml
+      playerdata/
 ```
 
-```toml
-# packages/encryptal/shop.toml
-name = "encryptal/shop"
-kind = "feature"
-description = "Currency shop with rotating stock"
+The folder holds the newest release. Every published version is a git tag:
 
-[[version]]
-version = "1.2.0"
-source = "git+https://github.com/encryptal/boil-shop"
-tag = "v1.2.0"
-boil = "^0.3"
-published = "2026-07-14"
+```
+encryptal/shop@1.0.0
+encryptal/shop@1.1.0
+encryptal/shop@1.2.0
 ```
 
-The index is cloned to `~/.boil/index` and refreshed on demand. Package *contents*
-live in their own git repos, fetched by tag with `git clone --depth 1 --branch`.
+So installing an older version reads it out of the clone you already have
+(`git show <tag>:packages/encryptal/shop/…`) instead of fetching a second repo,
+and the newest version is a plain file copy with no git involved at all.
+
+The index is cloned to `~/.boil/index/<hash>` with `--filter=blob:none` — a
+blobless partial clone rather than a shallow one, because `--depth 1` would cut
+off the tags that *are* the version history. Old file contents arrive only when a
+version is actually installed. Commands refresh it in passing when it's more than
+six hours stale; `boil refresh` still forces it.
+
+Three things follow from one repo holding everything, and they're the reason for
+the format:
+
+- **Nothing to create before publishing.** No per-package repo, no `repository`
+  field to fill in.
+- **A publish can't half-succeed.** One commit, one tag, one push.
+- **One access grant.** Read on the registry is read on every package in it —
+  which is also the trade-off: a package needing its own permissions needs its
+  own registry.
+
+An index written before this change (a `.toml` listing per package) is detected
+and reported rather than read as empty. `boil migrate <old-index-url>` walks its
+listings, follows each pointer while it still resolves, and writes the contents
+into the new layout, oldest release first.
 
 Why git and not a hosted service: zero infrastructure to operate, free, private
 packages work through normal GitHub permissions, and `git` is already installed
@@ -438,7 +465,7 @@ it. One global install now serves every Boil project on the machine.
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
-| `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
+| `publish [path]` | Lint → tag → push the package repo → register the version in the index. With no path, lists this project's features and skins and asks which one. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
 
 Two versions answer to the name Boil: the framework inside a project, which
@@ -522,8 +549,11 @@ boil publish src/features/Shop
    ignores nested dirs), manifest valid, no `require` of another feature's
    internals, every `Packages.*` require declared in `[wally]`, every
    cross-feature registration file backed by a `[dependencies]` entry.
-4. Push the folder to its package repo at `v<version>`.
-5. Add the version to the index and push (or open a PR against it).
+4. If that version is already published, offer the next patch/minor/major and
+   write the choice into `boil.toml`.
+5. Copy the folder into `packages/<owner>/<name>/` in the registry, commit, tag
+   `<owner>/<name>@<version>`, and push. One repo, one push. A push that loses a
+   race is rebased and retried rather than reported as a conflict.
 
 Undeclared dependencies are the failure mode that matters — a feature that
 silently assumes PlayerData exists installs fine and breaks at runtime in someone

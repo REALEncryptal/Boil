@@ -9,9 +9,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import * as format from "./format.js";
 import * as manifest from "./manifest.js";
 import * as project from "./project.js";
 import * as registry from "./registry.js";
+import * as semver from "./semver.js";
 import * as source from "./source.js";
 import * as term from "./term.js";
 import { copyDir, isDir, listFiles, pascal, readFile, removeDir, startsWith, tempDir, trim } from "./util.js";
@@ -133,109 +135,176 @@ async function scaffold(dir) {
 	return pkg;
 }
 
-// Replace the package repo's contents with `dir`, then commit and tag.
-function pushPackage(pkg, dir, tag) {
-	const repo = pkg.repository;
-	const work = tempDir("publish");
-	removeDir(work);
+// Put the package into the registry and tag the release.
+//
+// One repo, one push. The v1 flow pushed the folder to a repo you had to create
+// yourself and *then* pushed a listing to the index, which could half-succeed —
+// code published, index not. There is nothing to half-succeed here.
+function publishToRegistry(pkg, dir, target, tag) {
+	const local = isDir(target.url);
+	const work = local ? target.url : tempDir("publish");
 
-	const [cloned, output] = source.git(["clone", "--quiet", repo, work]);
-	if (!cloned) {
-		term.warn(`could not clone ${repo}:\n${trim(output)}`);
-		term.info("Create the repository first, then re-run publish.");
+	if (!local) {
+		removeDir(work);
+		const [cloned, output] = source.git(["clone", "--quiet", target.url, work]);
+		if (!cloned) {
+			term.warn(`could not clone the registry ${target.url}:\n${trim(output)}`);
+			return false;
+		}
+	}
+
+	if (registry.formatOf(work) !== registry.FORMAT) {
+		term.warn(`${target.name} is still the old index format (a list of links to other repos)`);
+		term.info(`convert it once with ${term.bold(`boil migrate ${target.url}`)}, then publish again`);
+		if (!local) removeDir(work);
 		return false;
 	}
 
-	for (const rel of listFiles(work)) {
-		fs.rmSync(path.join(work, rel));
-	}
-	copyDir(dir, work);
+	const dest = path.join(work, pkg.subdir ?? subdirFor(pkg));
+	removeDir(dest);
+	copyDir(dir, dest);
 
 	source.git(["add", "-A"], work);
-	const [committed] = source.git(["commit", "-m", `${pkg.name} ${pkg.version}`], work);
-	if (!committed) {
-		term.info("no content changes to commit");
+	const [committed, commitOutput] = source.git(["commit", "-m", `${pkg.name} ${pkg.version}`], work);
+	if (!committed && !trim(commitOutput).includes("nothing to commit")) {
+		term.warn(`could not commit:\n${trim(commitOutput)}`);
+		if (!local) removeDir(work);
+		return false;
 	}
 
 	const [tagged, tagOutput] = source.git(["tag", tag], work);
 	if (!tagged) {
 		term.warn(`could not create tag ${tag}: ${trim(tagOutput)}`);
-		removeDir(work);
+		if (!local) removeDir(work);
 		return false;
 	}
 
-	const [pushed, pushOutput] = source.git(["push", "origin", "HEAD", "--tags"], work);
-	removeDir(work);
-	if (!pushed) {
-		term.warn(`push failed:\n${trim(pushOutput)}`);
-		return false;
-	}
-	return true;
-}
-
-function emptyListing(pkg) {
-	return { name: pkg.name, kind: pkg.kind, description: pkg.description ?? "", versions: [] };
-}
-
-function pushIndex(pkg, tag, registryName) {
-	const url = registryName ? registry.byName(registryName).url : registry.url();
-	if (isDir(url)) {
-		const listing = registry.find(pkg.name, url) ?? emptyListing(pkg);
-		mergeRelease(listing, pkg, tag);
-		registry.writeListing(url, listing);
-		term.ok(`updated the local index at ${url}`);
+	if (local) {
+		term.ok(`updated the local registry at ${target.url}`);
 		return true;
 	}
 
-	const work = tempDir("index");
+	const pushed = pushWithRetry(work, tag);
 	removeDir(work);
-	const [cloned, output] = source.git(["clone", "--quiet", url, work]);
-	if (!cloned) {
-		term.warn(`could not clone the index ${url}:\n${trim(output)}`);
-		return false;
-	}
-
-	const listing = registry.find(pkg.name, work) ?? emptyListing(pkg);
-	mergeRelease(listing, pkg, tag);
-	registry.writeListing(work, listing);
-
-	source.git(["add", "-A"], work);
-	source.git(["commit", "-m", `${pkg.name} ${pkg.version}`], work);
-	const [pushed, pushOutput] = source.git(["push", "origin", "HEAD"], work);
-	removeDir(work);
-
-	if (!pushed) {
-		term.warn(`could not push to the index:\n${trim(pushOutput)}`);
-		term.info("You may not have write access — open a pull request against the index instead.");
-		return false;
-	}
-	return true;
+	return pushed;
 }
 
-export function mergeRelease(listing, pkg, tag) {
-	listing.description = pkg.description ?? listing.description;
-	listing.kind = pkg.kind;
-
-	const release = {
-		version: pkg.version,
-		source: `git+${pkg.repository}`,
-		tag,
-		boil: pkg.boil,
-		contract: pkg.contract,
-	};
-
-	const index = listing.versions.findIndex((existing) => existing.version === pkg.version);
-	if (index >= 0) {
-		listing.versions[index] = release;
-		return;
+// Two people publishing at once race on the push. Rebase onto whatever landed
+// first and try again rather than reporting a conflict that isn't one.
+function pushWithRetry(work, tag, attempts = 3) {
+	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		const [pushed, output] = source.git(["push", "origin", "HEAD", tag], work);
+		if (pushed) {
+			return true;
+		}
+		if (attempt === attempts) {
+			term.warn(`push failed:\n${trim(output)}`);
+			return false;
+		}
+		term.info(term.dim("someone else pushed first — rebasing and retrying"));
+		const [rebased, rebaseOutput] = source.git(["pull", "--rebase", "--quiet", "origin", "HEAD"], work);
+		if (!rebased) {
+			term.warn(`could not rebase onto the registry:\n${trim(rebaseOutput)}`);
+			return false;
+		}
 	}
-	listing.versions.push(release);
+	return false;
+}
+
+export function subdirFor(pkg) {
+	return `${registry.PACKAGES}/${pkg.name}`;
+}
+
+// Every folder in this checkout that could be published — one per feature and
+// skin, whether or not it has a boil.toml yet, since publishing scaffolds one.
+export function candidates(dirs = project.INSTALL_DIRS) {
+	const found = [];
+
+	for (const [kind, root] of Object.entries(dirs)) {
+		if (!isDir(root)) {
+			continue;
+		}
+		for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+			if (!entry.isDirectory()) {
+				continue;
+			}
+			const dir = `${root}/${entry.name}`;
+			const [pkg] = manifest.read(dir);
+			found.push({ kind, dir, folder: entry.name, pkg });
+		}
+	}
+
+	return found.sort((a, b) => (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0));
+}
+
+// What the picker says about a candidate on its right-hand side. The question
+// it answers is "what happens if I pick this one?" — a version already released
+// means a bump is coming, and no manifest at all means the scaffold runs.
+export function describe(candidate, listings = allListings()) {
+	if (!candidate.pkg) {
+		return { note: "no boil.toml yet — publishing writes one", ready: false };
+	}
+
+	const listing = listings.find((entry) => entry.name === candidate.pkg.name);
+	const version = candidate.pkg.version;
+	if (!listing) {
+		return { note: `${version} · new package`, ready: true };
+	}
+	if (listing.versions.some((release) => release.version === version)) {
+		return { note: `${version} · already published — publishing offers a bump`, ready: false };
+	}
+
+	const newest = format.latest(listing);
+	return { note: newest ? `${version} · registry has ${newest.version}` : `${version} · in the registry`, ready: true };
+}
+
+function allListings() {
+	const seen = new Map();
+	for (const entry of registry.all()) {
+		for (const listing of registry.load(entry.url)) {
+			if (!seen.has(listing.name)) {
+				seen.set(listing.name, listing);
+			}
+		}
+	}
+	return [...seen.values()];
+}
+
+// `boil publish` with nothing named: show what's here, the way `explore` shows
+// what's out there.
+async function pick() {
+	const found = candidates();
+	if (found.length === 0) {
+		term.fail(
+			`nothing to publish — ${Object.values(project.INSTALL_DIRS).join("/ and ")}/ are empty. A package is one folder in either.`,
+		);
+	}
+
+	const listings = allListings();
+	const width = Math.max(...found.map((candidate) => candidate.folder.length));
+	const rows = found.map((candidate) => {
+		const { note, ready } = describe(candidate, listings);
+		const name = ready ? term.bold(candidate.folder.padEnd(width)) : candidate.folder.padEnd(width);
+		return `${name}  ${term.dim(`${candidate.kind}  ·  ${note}`)}`;
+	});
+
+	term.heading(`Publish from this project (${found.length})`);
+	term.print("");
+	const choice = await term.select("Which package?", rows);
+	return choice ? found[choice - 1].dir : undefined;
 }
 
 export async function run(args, options = {}) {
 	let dir = args[0];
 	if (!dir) {
-		term.fail("usage: boil publish <path-to-package>");
+		if (!term.isInteractive()) {
+			term.fail("usage: boil publish <path-to-package> — or run it with no arguments in a terminal to pick one");
+		}
+		dir = await pick();
+		if (!dir) {
+			term.print("Nothing published.");
+			return;
+		}
 	}
 	dir = dir.replace(/\/$/, "");
 	if (!isDir(dir)) {
@@ -274,43 +343,113 @@ export async function run(args, options = {}) {
 		term.ok(`lints pass (${ran.join(", ")})`);
 	}
 
-	if (!pkg.repository) {
-		term.fail("no `repository` in boil.toml — set it to the git URL this package publishes to");
-	}
+	const target = await chooseRegistry(options);
 
-	let target = registry.byName(registry.DEFAULT_NAME);
-	if (options.registry) {
-		target = registry.byName(options.registry);
-		if (!target) {
-			const known = registry
-				.all()
-				.map((entry) => entry.name)
-				.join(", ");
-			term.fail(`unknown registry "${options.registry}" — configured: ${known}`);
+	registry.ensureFresh(target.url);
+
+	// The version is the release. If it's taken, publishing it again would be a
+	// second meaning for one number, so offer the next one instead of failing.
+	const published = releasedVersions(pkg.name, target.url);
+	if (published.includes(pkg.version)) {
+		const bumped = await offerBump(pkg, published, dir, options);
+		if (!bumped) {
+			term.fail(`${pkg.name} ${pkg.version} is already published in ${target.name} — bump the version to publish again`);
 		}
 	}
 
-	const tag = `v${pkg.version}`;
+	const tag = registry.tagFor(pkg.name, pkg.version);
+	const subdir = subdirFor(pkg);
+
 	if (options.dryRun) {
-		term.ok(`dry run: would push ${dir}/ to ${pkg.repository} at ${tag} and register it in ${target.name} (${target.url})`);
+		term.ok(`dry run: would write ${dir}/ to ${subdir}/ in ${target.name} (${target.url}) and tag ${tag}`);
 		return;
 	}
 
 	term.print("");
-	term.info(`push ${dir}/ → ${pkg.repository} @ ${tag}`);
-	term.info(`register ${pkg.name} ${pkg.version} in ${term.bold(target.name)} ${term.dim(target.url)}`);
+	term.info(`${target.name} ${term.dim(target.url)}`);
+	term.info(`${dir}/ → ${subdir}/, tagged ${term.bold(tag)}`);
 	if (!options.yes && !(await term.confirm("Publish?"))) {
 		term.print("Cancelled.");
 		return;
 	}
 
-	if (!pushPackage(pkg, dir, tag)) {
-		term.fail("publish aborted — nothing was written to the index");
+	if (!publishToRegistry(pkg, dir, target, tag)) {
+		term.fail("publish aborted — nothing was written to the registry");
 	}
-	term.ok(`pushed ${pkg.repository} @ ${tag}`);
 
-	if (!pushIndex(pkg, tag, options.registry)) {
-		term.fail("the package was pushed, but the index was not updated");
-	}
 	term.ok(`published ${pkg.name} ${pkg.version}`);
+	term.info(`anyone pointed at ${target.name} can now run ${term.bold(`boil add ${pkg.name}`)}`);
+}
+
+// Where this release is going.
+//
+// Defaulting to the built-in public index is wrong the moment someone has
+// configured their own: a private feature would be aimed at a registry the
+// whole world reads. So when there's a choice to make, make it out loud.
+async function chooseRegistry(options) {
+	const configured = registry.all();
+
+	if (options.registry) {
+		const named = registry.byName(options.registry);
+		if (!named) {
+			const known = configured.map((entry) => entry.name).join(", ");
+			term.fail(`unknown registry "${options.registry}" — configured: ${known}`);
+		}
+		return named;
+	}
+
+	if (configured.length === 1) {
+		return configured[0];
+	}
+
+	// Non-interactive keeps the old, predictable answer rather than guessing.
+	if (!term.isInteractive() || options.yes) {
+		return registry.byName(registry.DEFAULT_NAME);
+	}
+
+	term.print("");
+	const labels = configured.map((entry) => `${entry.name}  ${term.dim(`${entry.url}  (${entry.scope})`)}`);
+	const choice = await term.select("Publish to which registry?", labels);
+	if (!choice) {
+		term.print("Cancelled.");
+		process.exit(0);
+	}
+	return configured[choice - 1];
+}
+
+// Versions already tagged in the registry.
+export function releasedVersions(name, registryUrl) {
+	const listing = registry.find(name, registryUrl);
+	return listing ? listing.versions.map((release) => release.version) : [];
+}
+
+// Offer the next patch/minor/major and write the choice into boil.toml, so a
+// re-publish is one keypress rather than an edit, a save and a re-run.
+async function offerBump(pkg, published, dir, options) {
+	const next = {
+		patch: semver.bump(pkg.version, "patch"),
+		minor: semver.bump(pkg.version, "minor"),
+		major: semver.bump(pkg.version, "major"),
+	};
+
+	term.print("");
+	term.warn(`${pkg.name} ${pkg.version} is already published`);
+	if (options.yes || !term.isInteractive()) {
+		return false;
+	}
+
+	const labels = [
+		`patch  ${next.patch}`,
+		`minor  ${next.minor}`,
+		`major  ${next.major}`,
+	];
+	const choice = await term.select(`Publish a new version instead? (published: ${published.join(", ")})`, labels);
+	if (!choice) {
+		return false;
+	}
+
+	pkg.version = [next.patch, next.minor, next.major][choice - 1];
+	manifest.write(dir, pkg);
+	term.ok(`${dir}/${manifest.FILENAME} → version = "${pkg.version}"`);
+	return true;
 }

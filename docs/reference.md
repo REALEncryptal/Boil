@@ -19,6 +19,7 @@
 | `Trove`       | `sleitnick/trove@1.8.0`         | `require(ReplicatedStorage.Packages.Trove)` — track & clean up instances, connections, tasks. Docs: <https://sleitnick.github.io/RbxUtil/api/Trove> |
 | `Signal`      | `sleitnick/signal@2.0.3`        | `require(ReplicatedStorage.Packages.Signal)` — typed Lua signals (`Signal.new()`). Docs: <https://sleitnick.github.io/RbxUtil/api/Signal> |
 | `ReplicaService` | `brittonfischer/replicaservice@0.1.0` | Shared realm. Server: `require(ReplicatedStorage.Packages.ReplicaService)` for `ReplicaService`. Client: the same path exposes `ReplicaController`. Docs: <https://madstudioroblox.github.io/ReplicaService/> |
+| `TopbarPlus`  | `1foreverhd/topbarplus@3.4.0`   | `require(ReplicatedStorage.Packages.TopbarPlus)` — topbar icons, dropdowns and menus. Docs: <https://1foreverhd.github.io/TopbarPlus/> |
 | `Cmdr`        | `evaera/cmdr@1.12.0`            | In-game command console. Server: `require(ReplicatedStorage.Packages.Cmdr):RegisterDefaultCommands()`. Client: `require(ReplicatedStorage:WaitForChild("CmdrClient"))` — Cmdr inserts CmdrClient into ReplicatedStorage from the server side, so `WaitForChild` is required. Docs: <https://eryn.io/Cmdr/> |
 
 ### Server-only dependencies (ServerPackages/)
