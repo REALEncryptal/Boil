@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { candidates, describe as describeCandidate } from "../src/publish.js";
+import { candidates, check, describe as describeCandidate } from "../src/publish.js";
+import * as manifest from "../src/manifest.js";
 
 // A checkout with the folders `boil publish` offers to publish.
 function checkout(layout) {
@@ -91,5 +92,33 @@ describe("describe", () => {
 		const { note, ready } = describeCandidate({ pkg: { name: "me/hats", version: "0.1.0" } }, listings);
 		assert.match(note, /new package/);
 		assert.equal(ready, true);
+	});
+});
+
+// v2 keeps packages in the registry, so publishing has no second repo to name.
+// A manifest with no `repository` — what the scaffold now writes — has to sail
+// through the gate.
+describe("check", () => {
+	it("doesn't ask a package for a git URL", () => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), "boil-scaffold-test-"));
+		const dir = path.join(root, "Shop");
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, "ShopService.server.luau"), "-- shop\n");
+
+		try {
+			const pkg = manifest.empty("delta/shop", "feature");
+			pkg.description = "A shop";
+			pkg.version = "0.1.0";
+			pkg.boil = "^0.1.0";
+			manifest.write(dir, pkg);
+
+			// Round-trip it: the gate reads what was actually written to disk.
+			const [written, error] = manifest.read(dir);
+			assert.equal(error, undefined);
+			assert.equal(written.repository, undefined);
+			assert.deepEqual(check(written, dir), []);
+		} finally {
+			fs.rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

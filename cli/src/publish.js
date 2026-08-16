@@ -110,6 +110,11 @@ export function check(pkg, dir) {
 }
 
 // Fill in a manifest for a folder that doesn't have one yet.
+//
+// Four questions, all about the package itself. There is deliberately no "git
+// URL" here: the registry holds the package, so there is no second repo to name.
+// (`repository` still exists in the format as optional metadata — a link to
+// where the thing is developed — it just isn't something publishing needs.)
 async function scaffold(dir) {
 	const folder = path.basename(dir);
 	const kind = startsWith(dir, project.INSTALL_DIRS.skin) ? "skin" : "feature";
@@ -119,19 +124,24 @@ async function scaffold(dir) {
 	const name = (await term.text("Package name", folder.toLowerCase())) ?? folder.toLowerCase();
 	const description = (await term.text("One-line description")) ?? "";
 	const version = (await term.text("Version", "0.1.0")) ?? "0.1.0";
-	const repository = await term.text("Package git URL", `https://github.com/${scope}/boil-${folder.toLowerCase()}`);
 
 	const pkg = manifest.empty(`${scope}/${name}`, kind);
 	pkg.description = description;
 	pkg.version = version;
-	pkg.repository = repository;
 	pkg.boil = `^${project.read().boil}`;
 	if (kind === "skin") {
 		pkg.contract = `^${project.contractVersion()}`;
 	}
 
 	manifest.write(dir, pkg);
-	term.ok(`wrote ${dir}/${manifest.FILENAME} — edit it and re-run publish`);
+	term.ok(`wrote ${dir}/${manifest.FILENAME}`);
+
+	// Answering four questions and being told to run the command again is a dead
+	// end, especially from the hub. Carry straight on unless there's editing to do.
+	if (!(await term.confirm("Publish it now?"))) {
+		term.info(`edit ${dir}/${manifest.FILENAME} — dependencies, [wally], [studio] — then run publish again`);
+		return undefined;
+	}
 	return pkg;
 }
 
@@ -311,10 +321,12 @@ export async function run(args, options = {}) {
 		term.fail(`no such directory: ${dir}`);
 	}
 
-	const [pkg] = manifest.read(dir);
+	let [pkg] = manifest.read(dir);
 	if (!pkg) {
-		await scaffold(dir);
-		return;
+		pkg = await scaffold(dir);
+		if (!pkg) {
+			return;
+		}
 	}
 
 	term.heading(`Publishing ${pkg.name} ${pkg.version}`);
