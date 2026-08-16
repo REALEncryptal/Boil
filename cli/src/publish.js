@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import * as format from "./format.js";
 import * as manifest from "./manifest.js";
 import * as project from "./project.js";
 import * as registry from "./registry.js";
@@ -232,10 +233,96 @@ export function mergeRelease(listing, pkg, tag) {
 	listing.versions.push(release);
 }
 
+// Every folder in this checkout that could be published — one per feature and
+// skin, whether or not it has a boil.toml yet, since publishing scaffolds one.
+export function candidates(dirs = project.INSTALL_DIRS) {
+	const found = [];
+
+	for (const [kind, root] of Object.entries(dirs)) {
+		if (!isDir(root)) {
+			continue;
+		}
+		for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+			if (!entry.isDirectory()) {
+				continue;
+			}
+			const dir = `${root}/${entry.name}`;
+			const [pkg] = manifest.read(dir);
+			found.push({ kind, dir, folder: entry.name, pkg });
+		}
+	}
+
+	return found.sort((a, b) => (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0));
+}
+
+// What the picker says about a candidate on its right-hand side. The question
+// it answers is "what happens if I pick this one?" — a version already in the
+// index means a bump is needed, and no manifest at all means the scaffold runs.
+export function describe(candidate, listings = allListings()) {
+	if (!candidate.pkg) {
+		return { note: "no boil.toml yet — publishing writes one", ready: false };
+	}
+
+	const listing = listings.find((entry) => entry.name === candidate.pkg.name);
+	const version = candidate.pkg.version;
+	if (!listing) {
+		return { note: `${version} · new package`, ready: true };
+	}
+	if (listing.versions.some((release) => release.version === version)) {
+		return { note: `${version} · already published — bump the version first`, ready: false };
+	}
+
+	const newest = format.latest(listing);
+	return { note: newest ? `${version} · index has ${newest.version}` : `${version} · in the index`, ready: true };
+}
+
+function allListings() {
+	const seen = new Map();
+	for (const entry of registry.all()) {
+		for (const listing of registry.load(entry.url)) {
+			if (!seen.has(listing.name)) {
+				seen.set(listing.name, listing);
+			}
+		}
+	}
+	return [...seen.values()];
+}
+
+// `boil publish` with nothing to publish named: show what's here, same as
+// `boil explore` does for what's out there.
+async function pick() {
+	const found = candidates();
+	if (found.length === 0) {
+		term.fail(
+			`nothing to publish — ${Object.values(project.INSTALL_DIRS).join("/ and ")}/ are empty. A package is one folder in either.`,
+		);
+	}
+
+	const listings = allListings();
+	const width = Math.max(...found.map((candidate) => candidate.folder.length));
+	const rows = found.map((candidate) => {
+		const { note, ready } = describe(candidate, listings);
+		const name = ready ? term.bold(candidate.folder.padEnd(width)) : candidate.folder.padEnd(width);
+		return `${name}  ${term.dim(`${candidate.kind}  ·  ${note}`)}`;
+	});
+
+	term.heading(`Publish from this project (${found.length})`);
+	term.print("");
+	const choice = await term.select("Which package?", rows);
+	return choice ? found[choice - 1].dir : undefined;
+}
+
 export async function run(args, options = {}) {
 	let dir = args[0];
 	if (!dir) {
-		term.fail("usage: boil publish <path-to-package>");
+		if (!term.isInteractive()) {
+			term.fail("usage: boil publish <path-to-package> — or run it with no arguments in a terminal to pick one");
+		}
+		dir = await pick();
+		if (!dir) {
+			term.print("Nothing published.");
+			return;
+		}
 	}
 	dir = dir.replace(/\/$/, "");
 	if (!isDir(dir)) {
@@ -275,7 +362,12 @@ export async function run(args, options = {}) {
 	}
 
 	if (!pkg.repository) {
-		term.fail("no `repository` in boil.toml — set it to the git URL this package publishes to");
+		// The index stores a git URL per release, so this is the one thing that
+		// can't be inferred — say exactly what to write and where.
+		term.print("");
+		term.info(`add this to ${term.bold(`${dir}/boil.toml`)}, pointing at the repo the package's code lives in:`);
+		term.info(term.cyan(`repository = "https://github.com/<you>/${path.basename(dir)}"`));
+		term.fail("no `repository` in boil.toml — the index records where each release came from");
 	}
 
 	let target = registry.byName(registry.DEFAULT_NAME);
@@ -313,4 +405,5 @@ export async function run(args, options = {}) {
 		term.fail("the package was pushed, but the index was not updated");
 	}
 	term.ok(`published ${pkg.name} ${pkg.version}`);
+	term.info(`anyone pointed at ${target.name} can now run ${term.bold(`boil add ${pkg.name}`)}`);
 }

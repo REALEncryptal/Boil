@@ -56,7 +56,7 @@ boil add company:acme/shop        # qualify when two registries share a name
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game). |
-| `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
+| `publish [path]` | Lint → tag → push the package repo → register the version in the index. With no path, lists this project's features and skins and asks which one. |
 | `doctor` | Missing dependencies, Wally gaps, packages not in the lockfile. |
 
 `boil help` lists the flags. The full picture — the package format, the index,

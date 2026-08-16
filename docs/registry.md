@@ -438,7 +438,7 @@ it. One global install now serves every Boil project on the machine.
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
 | `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
-| `publish <path>` | Lint → tag → push the package repo → register the version in the index. |
+| `publish [path]` | Lint → tag → push the package repo → register the version in the index. With no path, lists this project's features and skins and asks which one. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
 
 Two versions answer to the name Boil: the framework inside a project, which

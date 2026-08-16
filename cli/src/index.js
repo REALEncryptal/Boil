@@ -60,7 +60,8 @@ Install
   list                        what's installed, and what you've edited
 
 Author
-  publish <path>              lint, tag, push, and register a package
+  publish [path]              lint, tag, push, and register a package
+                              no path: pick from this project's features and skins
   doctor                      missing deps, Wally gaps, untracked packages
 
 Flags

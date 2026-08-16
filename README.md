@@ -69,7 +69,7 @@ boil upgrade                 pull a newer framework into an existing game
 boil setup                   create/connect a package index
 boil explore                 browse registries and install
 boil add / remove / update / list / outdated / install
-boil publish <path>          share a feature or skin
+boil publish [path]          share a feature or skin (no path = pick from a list)
 boil registry add <name> <url>
 boil doctor                  missing deps, Wally gaps, untracked packages
 ```
