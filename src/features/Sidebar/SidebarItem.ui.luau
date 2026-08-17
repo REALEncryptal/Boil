@@ -79,6 +79,11 @@ return function(props: Props)
 		[React.Event.MouseLeave] = onLeave,
 		[React.Event.MouseButton1Down] = hover.onPress,
 		[React.Event.MouseButton1Up] = hover.onRelease,
+		-- Touch: MouseEnter/Leave never fire on a phone, so a tap would get no
+		-- feedback at all without these. Both ignore non-touch input. The tilt
+		-- stays a mouse flourish — a tap gets the press squash instead.
+		[React.Event.InputBegan] = hover.onInputBegan,
+		[React.Event.InputEnded] = hover.onInputEnded,
 		[React.Event.Activated] = props.onClick,
 	}, {
 		UIScale = React.createElement("UIScale", {

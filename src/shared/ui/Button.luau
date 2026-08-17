@@ -83,6 +83,10 @@ return function(props: Props)
 			[React.Event.MouseLeave] = if disabled then nil else hover.onLeave,
 			[React.Event.MouseButton1Down] = if disabled then nil else hover.onPress,
 			[React.Event.MouseButton1Up] = if disabled then nil else hover.onRelease,
+			-- Touch: MouseEnter/Leave never fire on a phone, so without these
+			-- a tap gets no feedback at all. Both ignore non-touch input.
+			[React.Event.InputBegan] = if disabled then nil else hover.onInputBegan,
+			[React.Event.InputEnded] = if disabled then nil else hover.onInputEnded,
 			[React.Event.Activated] = if disabled then nil else props.onClick,
 		}),
 

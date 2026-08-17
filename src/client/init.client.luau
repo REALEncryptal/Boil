@@ -41,7 +41,13 @@ local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local screen = Instance.new("ScreenGui")
 screen.Name = "BoilRoot"
 screen.ResetOnSpawn = false
-screen.IgnoreGuiInset = true
+-- Full-bleed, but not naively so. DeviceSafeInsets supersedes the older
+-- IgnoreGuiInset: the GUI still spans the whole screen (including under the
+-- Roblox topbar, which centered content wants), while the engine keeps it clear of
+-- notches, rounded corners, and the home indicator — none of which UI code should
+-- have to know about. The topbar is the one intrusion left for us; features that
+-- anchor to the top edge wrap themselves in `ui.SafeArea`.
+screen.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 -- Studio's Insert menu defaults to Sibling but Instance.new defaults to
 -- Global. Global mode breaks parent/child Z-layering (a child Frame at
 -- ZIndex 1 draws behind its parent at ZIndex 2), which is almost never
@@ -68,10 +74,18 @@ for i = #providers, 1, -1 do
 	app = React.createElement(providers[i], {}, { Child = app })
 end
 
--- SkinProvider sits at the very top so every primitive below resolves the same
--- active skin. Swap "gem" → "flat" (or any future skin) to re-skin the whole UI.
+-- Two framework-level seams wrap everything, both feature-agnostic:
+--   * SkinProvider — how primitives *look*. Swap "gem" → "flat" (or any installed
+--     skin) to re-skin the whole UI.
+--   * Canvas — how big the UI is on this *device*. Every skin token is a fixed
+--     pixel offset, so without this the HUD is implicitly authored at desktop size
+--     and covers a phone. Mounting it here is what makes scaling a property of the
+--     framework instead of something each feature has to remember; a screen written
+--     tomorrow is responsive without opting in. See docs/game/device-scale.md.
 root:render(React.createElement(ui.SkinProvider, { skin = "gem" }, {
-	App = app,
+	App = React.createElement(ui.Canvas, {}, {
+		App = app,
+	}),
 }))
 
 -- Load controllers, start them, THEN request replicas from the server.

@@ -250,6 +250,26 @@ React.createElement(ui.Stack, { gap = 12, padding = 10, fillHorizontal = true },
 | `ui.Grid` | UIGridLayout | cell size/padding, columns; children are **direct** cells |
 | `ui.Slot` | named transparent Frame | a positioned region; future portal-bridge target |
 
+### Scale seam (`ui.Canvas` / `ui.scale` / `ui.SafeArea`)
+
+Every token above is a fixed pixel offset authored at 1920×1080, so a screen written on desktop covers a phone unless something scales it. `ui.Canvas` is that something: it fills the box it's given and draws its contents at the device's factor, staying full-bleed so scale-positioned children keep their screen fraction while offset-sized children get `scale`× pixels. The client root mounts one around the whole tree — **a feature UI does nothing to opt in**. See [device-scale.md](game/device-scale.md).
+
+```lua
+React.createElement(ui.Canvas, {}, { App = … })          -- the surface (root mounts it)
+React.createElement(ui.SafeArea, { extra = 10 }, { … })  -- inset from the Roblox topbar
+React.createElement(ui.ScaleProvider, { scale = 0.75 }, { … })  -- pin a subtree's factor
+
+local scale = ui.useViewportScale()   -- the active factor
+local surface = ui.useSurface()       -- { scale, viewport, isTouch, insets, locked }
+local safe = ui.useSafeArea()         -- { top, bottom, left, right } in canvas units
+ui.scale.compute(Vector2.new(1136, 640))  -- pure: what a phone would get
+```
+
+- **Policy** lives in `ui.scale` (`referenceViewport`, `responsiveness`, `minScale`, `maxScale`, `touchBoost`) — framework tokens, not skin tokens, since every skin scales by the same rule. Tune them live in the `Canvas` story's device simulator, then copy the values into `scale.luau`.
+- **Don't** multiply a size by `useViewportScale()` inside the canvas (double-scales), don't nest Canvases, and don't wrap an absolute-screen-coordinate overlay in one.
+- **Safe area**: device notches are handled by the root ScreenGui's `ScreenInsets = DeviceSafeInsets`; the Roblox topbar is not, so top-anchored chrome goes inside `ui.SafeArea`.
+- **Touch**: `useHoverScale` exposes `onInputBegan` / `onInputEnded` for `InputBegan` / `InputEnded` alongside the four mouse events — `MouseEnter`/`MouseLeave` never fire on a phone. Wire all six on any new interactive element.
+
 ### Importing from Studio (`src/shared/dev/Inspect`)
 
 Studio-built templates can be dumped to clipboard with a one-liner — select the root instance(s) in Explorer, then paste in the command bar:
@@ -344,7 +364,7 @@ The defaults live in `DEFAULT_SOUNDS` at the top of `src/shared/ui/useHoverScale
 Synced to `ServerScriptService.Server` as a `Script`. Runs once at server start. Loads and starts every service under `ServerScriptService.Features`.
 
 ### `src/client/init.client.luau`
-Synced to `StarterPlayerScripts.Client` as a `LocalScript`. Runs once per player join. Auto-requires every feature, discovers + requires `*Presentation` / `*WorldInteraction` modules (which self-register into `UIRegistry`), mounts the root React app (`SkinProvider → FrameProvider → Frame(UIRegistry.getRoots())`), then loads + starts every controller and requests replicas. Names no content feature — see [presentations.md](game/presentations.md) and [UIRegistry](#uiregistry-srcsharedutilsuiregistryluau).
+Synced to `StarterPlayerScripts.Client` as a `LocalScript`. Runs once per player join. Auto-requires every feature, discovers + requires `*Presentation` / `*WorldInteraction` modules (which self-register into `UIRegistry`), mounts the root React app (`SkinProvider → Canvas → registered providers → Frame(UIRegistry.getRoots())`), then loads + starts every controller and requests replicas. Names no content feature — see [presentations.md](game/presentations.md) and [UIRegistry](#uiregistry-srcsharedutilsuiregistryluau).
 
 ## UIRegistry (src/shared/utils/UIRegistry.luau)
 

@@ -22,10 +22,16 @@
 --
 -- Text and GemBackground are exported (also skin-resolved) so features can
 -- compose new surfaces without rebuilding the visual stack from scratch.
+--
+-- `ui.Canvas` is the device seam: every token here is a fixed pixel offset, so a
+-- screen authored on desktop covers a phone unless something scales it. The client
+-- root mounts one Canvas around the whole tree — features inherit it and never
+-- repeat the pattern. See docs/game/device-scale.md.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
+local ScaleProvider = require(script.ScaleProvider)
 local SkinProvider = require(script.SkinProvider)
 
 -- Build a semantic component for `key`: render the active skin's implementation,
@@ -72,6 +78,20 @@ ui.Stack = require(script.Stack)
 ui.Row = require(script.Row)
 ui.Grid = require(script.Grid)
 ui.Slot = require(script.Slot)
+
+-- Scale seam (#5): how big the UI is on the player's *device*. `Canvas` is the
+-- surface — the client root mounts one, so every feature UI is scaled without
+-- opting in. `SafeArea` insets a region away from the Roblox topbar. The hooks are
+-- escape hatches for the rare thing that leaves the canvas's coordinate space.
+ui.Canvas = require(script.Canvas)
+ui.SafeArea = require(script.SafeArea)
+ui.ScaleProvider = ScaleProvider.ScaleProvider
+ui.useSurface = ScaleProvider.useSurface
+ui.scale = require(script.scale)
+ui.useViewportScale = require(script.useViewportScale)
+ui.useSafeArea = require(script.useSafeArea)
+ui.useViewport = require(script.useViewport)
+ui.useMeasuredSize = require(script.useMeasuredSize)
 
 -- Skin-agnostic behavior hooks.
 ui.useHoverScale = require(script.useHoverScale)

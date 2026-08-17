@@ -95,6 +95,10 @@ return function(props: Props)
 			[React.Event.MouseLeave] = hover.onLeave,
 			[React.Event.MouseButton1Down] = hover.onPress,
 			[React.Event.MouseButton1Up] = hover.onRelease,
+			-- Touch: MouseEnter/Leave never fire on a phone, so without these
+			-- a tap gets no feedback at all. Both ignore non-touch input.
+			[React.Event.InputBegan] = hover.onInputBegan,
+			[React.Event.InputEnded] = hover.onInputEnded,
 			[React.Event.Activated] = function()
 				if props.onToggle then
 					props.onToggle(not props.checked)

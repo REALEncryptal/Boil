@@ -86,9 +86,9 @@ Loader.SpawnAll(LoadOrdered(modules), "Start")
 
 The client entry **names no content feature** — it discovers everything:
 
-1. **Auto-require every feature** (`Features:GetChildren()`, pcall'd) so each feature's load-time side effects run (the PlayerData / Settings auto-discovery loops). The only feature named explicitly is `UIShell`, whose `FrameProvider` is the structural shell that must wrap the tree.
-2. **Discover presentations** — `Loader.LoadDescendants(ClientFeatures, …)` requires every `*Presentation` / `*WorldInteraction` module **before** the root mounts, so they self-register into `UIRegistry` (roots + screen slots). See [presentations.md](game/presentations.md).
-3. **Mount** `SkinProvider → FrameProvider → Frame(UIRegistry.getRoots())`. The active skin resolves every `ui.*` primitive (see [skin-contract.md](game/skin-contract.md)).
+1. **Auto-require every feature** (`Features:GetChildren()`, pcall'd) so each feature's load-time side effects run (the PlayerData / Settings auto-discovery loops). No feature is named here — even a structural shell like UIShell's `FrameProvider` arrives through `UIRegistry.registerProvider`.
+2. **Discover presentations** — `Loader.LoadDescendants(ClientFeatures, …)` requires every `*Presentation` / `*WorldInteraction` module **before** the root mounts, so they self-register into `UIRegistry` (roots + screen slots, and top-level providers). See [presentations.md](game/presentations.md).
+3. **Mount** `SkinProvider → Canvas → registered providers → Frame(UIRegistry.getRoots())`. The active skin resolves every `ui.*` primitive (see [skin-contract.md](game/skin-contract.md)); the `Canvas` scales the design pixels every token is authored in down to the player's device, so no feature has to (see [device-scale.md](game/device-scale.md)).
 4. **Load + start controllers** (`Controller$`), then `ReplicaController.RequestData()` once listeners are wired.
 
 Result: adding a feature or a presentation needs **zero edits** to either entry file. See [Adding a Feature](adding-a-feature.md) for the conventions.

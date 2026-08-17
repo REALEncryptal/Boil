@@ -7,6 +7,18 @@
 --   "hover"  — hover only, no press tracking. Wire onEnter/onLeave to any
 --              GuiObject's MouseEnter/MouseLeave (Frame, ImageLabel, etc.).
 --
+-- **Touch.** MouseEnter/MouseLeave never fire on a touchscreen, so a mouse-only
+-- wiring leaves every phone player with no feedback at all — the button just sits
+-- there. `onInputBegan` / `onInputEnded` fill that in: wire them to the same
+-- object's InputBegan/InputEnded and the hook animates on tap. They ignore every
+-- input type except Touch, so they stack with the mouse handlers rather than
+-- double-firing (a mouse click would otherwise play the press cue twice).
+--
+-- What a tap animates depends on the kind, because touch has no hover state to
+-- speak of: "button" plays press-and-release (the finger-down feedback a phone
+-- player expects), "hover" maps touch down/up onto enter/leave so a hover-only
+-- affordance still reveals itself on tap.
+--
 -- `isHovered` / `isPressed` are exposed so callers can drive other effects
 -- (color shifts, glow toggles, etc.) off the same state machine. For purely
 -- programmatic animations with no pointer trigger, use useTweenedScale directly.
@@ -58,6 +70,10 @@ export type Handle = {
 	onLeave: () -> (),
 	onPress: () -> (),
 	onRelease: () -> (),
+	-- Touch equivalents. Signature matches a React-Roblox InputBegan/InputEnded
+	-- handler: (instance, inputObject, gameProcessedEvent).
+	onInputBegan: (GuiObject, InputObject) -> (),
+	onInputEnded: (GuiObject, InputObject) -> (),
 }
 
 local function useHoverScale(options: Options?): Handle
@@ -97,35 +113,69 @@ local function useHoverScale(options: Options?): Handle
 
 	local noop = function() end
 
+	local function onEnter()
+		setHovered(true)
+		if hoverInSound then
+			audio.playUI(hoverInSound)
+		end
+	end
+
+	-- Clear pressed too: a drag-off shouldn't leave the element stuck small.
+	local function onLeave()
+		setHovered(false)
+		if pressEnabled then
+			setPressed(false)
+		end
+		if hoverOutSound then
+			audio.playUI(hoverOutSound)
+		end
+	end
+
+	local onPress = if pressEnabled
+		then function()
+			setPressed(true)
+			if pressSound then
+				audio.playUI(pressSound)
+			end
+		end
+		else noop
+	local onRelease = if pressEnabled then function() setPressed(false) end else noop
+
+	-- A tap drives the press machine on a button and the hover machine on a
+	-- hover-only surface (see the note at the top). Non-touch input is left to
+	-- the mouse handlers so nothing fires twice.
+	local function onInputBegan(_instance: GuiObject, input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		if pressEnabled then
+			onPress()
+			return
+		end
+		onEnter()
+	end
+
+	local function onInputEnded(_instance: GuiObject, input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		if pressEnabled then
+			onRelease()
+			return
+		end
+		onLeave()
+	end
+
 	return {
 		scaleRef = scaleRef,
 		isHovered = hovered,
 		isPressed = pressed,
-		onEnter = function()
-			setHovered(true)
-			if hoverInSound then
-				audio.playUI(hoverInSound)
-			end
-		end,
-		-- Clear pressed too: a drag-off shouldn't leave the element stuck small.
-		onLeave = function()
-			setHovered(false)
-			if pressEnabled then
-				setPressed(false)
-			end
-			if hoverOutSound then
-				audio.playUI(hoverOutSound)
-			end
-		end,
-		onPress = if pressEnabled
-			then function()
-				setPressed(true)
-				if pressSound then
-					audio.playUI(pressSound)
-				end
-			end
-			else noop,
-		onRelease = if pressEnabled then function() setPressed(false) end else noop,
+		onEnter = onEnter,
+		onLeave = onLeave,
+		onPress = onPress,
+		onRelease = onRelease,
+		onInputBegan = onInputBegan,
+		onInputEnded = onInputEnded,
 	}
 end
 
