@@ -9,7 +9,7 @@ can share between games.
 ```bash
 npm install -g @encryptal/boil
 boil new my-game && cd my-game
-rokit install && wally install
+boil install      # rokit, wally, the Rojo Studio plugin — `boil new` offers to run it
 boil dev
 ```
 

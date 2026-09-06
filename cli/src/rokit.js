@@ -38,8 +38,44 @@ export function pickAsset(assets, spec) {
 	return (assets ?? []).find((asset) => pattern.test(asset?.name ?? ""));
 }
 
+// Where `rokit self-install` puts rokit and every tool shim it links.
+export function binDir() {
+	return path.join(os.homedir(), ".rokit", "bin");
+}
+
+export function toolPath(tool, platform = process.platform) {
+	return path.join(binDir(), platform === "win32" ? `${tool}.exe` : tool);
+}
+
 export function binaryPath() {
-	return path.join(os.homedir(), ".rokit", "bin", process.platform === "win32" ? "rokit.exe" : "rokit");
+	return toolPath("rokit");
+}
+
+// How to invoke a tool Rokit manages, or undefined when it isn't here yet.
+//
+// PATH first, then ~/.rokit/bin. The fallback matters more than it looks: Rokit
+// edits the shell profile, so the terminal that installed it — and every shell
+// already open — has the tools on disk but not on PATH. Resolving the shim
+// directly means a fresh machine works in one session instead of two.
+export function resolve(tool) {
+	const onPath = spawnSync(tool, ["--version"], { encoding: "utf8" });
+	if (!onPath.error) {
+		return tool;
+	}
+	const shim = toolPath(tool);
+	return fs.existsSync(shim) ? shim : undefined;
+}
+
+// An environment with ~/.rokit/bin on the front of PATH, for children that go
+// looking for a tool themselves (rojo shelling out, the splitter, wally).
+export function env(base = process.env) {
+	const key = Object.keys(base).find((name) => name.toUpperCase() === "PATH") ?? "PATH";
+	const current = base[key] ?? "";
+	const dir = binDir();
+	if (current.split(path.delimiter).includes(dir)) {
+		return base;
+	}
+	return { ...base, [key]: current === "" ? dir : `${dir}${path.delimiter}${current}` };
 }
 
 // The version string, or undefined when Rokit isn't here. `self-install` puts

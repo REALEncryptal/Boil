@@ -10,6 +10,7 @@ import * as self from "./self.js";
 import * as semver from "./semver.js";
 import * as source from "./source.js";
 import * as term from "./term.js";
+import * as toolchain from "./toolchain.js";
 import { copyDir, diffDirs, isDir, isFile, listFiles, readFile, removeDir } from "./util.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -387,8 +388,21 @@ export async function update(args, force) {
 	term.ok(`updated ${updated} package(s)`);
 }
 
-// Restore every locked package that isn't on disk (a fresh clone of the game).
-export async function install() {
+// `boil install` — make this checkout runnable, in one command.
+//
+// Two halves: the toolchain (Rokit, its tools, Wally's packages, the Rojo Studio
+// plugin) and this project's Boil packages from boil-lock.toml. They were split
+// across a README code block and a CLI command before, which meant a fresh clone
+// took five commands and the one people forgot — `rojo plugin install` — only
+// announced itself as Studio having nothing to connect to.
+//
+// The toolchain half runs first: `wally install` is a tool Rokit installs.
+export async function install(options = {}) {
+	const tools =
+		options.tools === false
+			? { ok: true, ran: false }
+			: await toolchain.run({ update: options.update === true, plugin: options.plugin !== false });
+
 	let restored = 0;
 	for (const entry of lock.read()) {
 		if (isDir(entry.path)) continue;
@@ -406,9 +420,17 @@ export async function install() {
 
 	if (restored === 0) {
 		term.print("Everything in the lockfile is already on disk.");
-		return;
 	}
-	reportSplit(project.runSplit());
+
+	// Build once when there's nothing to build from: default.project.json points
+	// at build/, which is gitignored, so a fresh clone has no tree for `rojo
+	// serve` to read until the splitter has run.
+	if (restored > 0 || (tools.ok && tools.ran && !isDir("build"))) {
+		reportSplit(project.runSplit());
+	}
+	if (!tools.ok) {
+		process.exitCode = 1;
+	}
 }
 
 export async function search(args) {

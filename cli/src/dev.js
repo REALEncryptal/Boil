@@ -10,6 +10,7 @@
 import { spawn, spawnSync } from "node:child_process";
 
 import * as project from "./project.js";
+import * as rokit from "./rokit.js";
 import * as term from "./term.js";
 import { isDir, isFile, trim } from "./util.js";
 
@@ -82,12 +83,20 @@ export function buildCommands({
 }
 
 // `--version` doubles as the "is it on PATH?" check and the version probe.
+//
+// Resolved through Rokit rather than PATH alone: the shell that ran `boil
+// install` picked the tools up on disk but not on PATH, and telling that user to
+// open a new terminal before `boil dev` works is a bad second five minutes.
 function probe(command) {
-	const result = spawnSync(command, ["--version"], { encoding: "utf8" });
+	const binary = rokit.resolve(command);
+	if (!binary) {
+		return { ok: false };
+	}
+	const result = spawnSync(binary, ["--version"], { encoding: "utf8", env: rokit.env() });
 	if (result.error || result.status !== 0) {
 		return { ok: false };
 	}
-	return { ok: true, version: trim(`${result.stdout ?? ""}${result.stderr ?? ""}`) };
+	return { ok: true, binary, version: trim(`${result.stdout ?? ""}${result.stderr ?? ""}`) };
 }
 
 // Prefix every line so two interleaved streams stay readable. Chunks don't
@@ -134,7 +143,7 @@ export async function run(args, options = {}) {
 
 	// Probe before assembling argv — the splitter's flags depend on which Lune
 	// is installed.
-	const missing = (command) => term.fail(`\`${command}\` isn't installed or isn't on PATH — run \`rokit install\``);
+	const missing = (command) => term.fail(`\`${command}\` isn't installed or isn't on PATH — run \`boil install\``);
 
 	let luneVersion;
 	if (split) {
@@ -208,7 +217,10 @@ export async function run(args, options = {}) {
 	// Resolve on the first exit: if either half dies the loop is broken, so stop
 	// the other rather than leaving half a dev environment running.
 	const exits = commands.map(({ label, command, args: argv }) => {
-		const child = spawn(command, argv, { stdio: ["ignore", "pipe", "pipe"] });
+		const child = spawn(rokit.resolve(command) ?? command, argv, {
+			stdio: ["ignore", "pipe", "pipe"],
+			env: rokit.env(),
+		});
 		children.push(child);
 
 		prefixed(child.stdout, label, paints[label]);

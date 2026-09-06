@@ -39,7 +39,7 @@ boil add company:acme/shop        # qualify when two registries share a name
 
 | Command | Does |
 | ------- | ---- |
-| `new [name]` | Scaffold a new game from the framework. Asks for a name and a template; never copies the CLI in. |
+| `new [name]` | Scaffold a new game from the framework. Asks for a name, a template, and whether to run `install` right away; never copies the CLI in. `--no-install` skips the offer. |
 | `dev [project-file]` | Run the splitter in watch mode and `rojo serve` together, prefixed and interleaved. `--port=34872`, `--address=`, `--no-split`, `--no-serve`. Ctrl-C stops both. |
 | *(no command)* | Opens the hub — browse, installed, publish, registries, dev — in a terminal. Piped or in CI it prints usage instead. |
 | `self-update` | Update the CLI itself from npm, using whichever package manager installed it. |
@@ -60,7 +60,7 @@ boil add company:acme/shop        # qualify when two registries share a name
 | `list` | Installed packages, versions, and whether each is locally modified. |
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
-| `install` | Restore everything in `boil-lock.toml` (fresh clone of a game). |
+| `install` | Get a checkout runnable: `rokit install` → `wally install` → `rojo plugin install` → restore everything in `boil-lock.toml`. `--update` bumps `rokit.toml` to the newest tools first; `--no-plugin` skips the Studio plugin (CI); `--no-tools` restores packages only. |
 | `publish [path]` | Gate → lint → write the folder into the registry → commit → tag `<owner>/<name>@<version>` → push. With no path, lists this project's features and skins and asks which one. Offers a version bump if that release exists. |
 | `doctor` | Missing dependencies, Wally gaps, packages not in the lockfile. |
 
@@ -83,8 +83,12 @@ minutes.
 The bootstrap does nothing when Rokit is already present, never fails the npm
 install (a failure prints the manual install link and moves on), and is off when
 `BOIL_SKIP_ROKIT=1` is set or npm runs with `--ignore-scripts`. Rokit installs
-itself to `~/.rokit/bin` and adds that to your shell profile, so a new terminal
-picks it up. Set `GITHUB_PAT` if you're behind a shared IP that's hitting
+itself to `~/.rokit/bin` and adds that to your shell profile. `boil install`
+retries the bootstrap if it was skipped, and every command that shells out to
+`rojo`, `wally` or `lune` looks in `~/.rokit/bin` as well as on PATH — so the
+terminal you installed from works straight away, without being reopened.
+
+Set `GITHUB_PAT` if you're behind a shared IP that's hitting
 GitHub's anonymous rate limit — the ambient `GITHUB_TOKEN` from a CI job is
 deliberately ignored.
 

@@ -14,6 +14,7 @@ import path from "node:path";
 
 import * as source from "./source.js";
 import * as term from "./term.js";
+import * as toolchain from "./toolchain.js";
 import * as toml from "./toml.js";
 import { copyDir, isDir, isFile, readFile, removeDir, tempDir, trim, writeFile } from "./util.js";
 
@@ -49,14 +50,12 @@ colocated feature code to the right Roblox service at sync time.
 ## Getting started
 
 \`\`\`bash
-rokit install                  # rojo, wally, lune
-wally install                  # populate Packages/
-
-lune run tools/split --watch   # terminal 1 — rebuild build/ on change
-rojo serve                     # terminal 2 — sync to Studio
+boil install                   # rokit, wally, the Rojo Studio plugin
+boil dev                       # splitter (watch) + rojo serve
 \`\`\`
 
-Then connect from Studio's Rojo plugin.
+Then connect from Studio's Rojo plugin. \`boil install --update\` bumps
+\`rokit.toml\` to the newest tool versions when you want them.
 
 ## Adding features and skins
 
@@ -254,14 +253,41 @@ export async function run(args, options = {}) {
 		term.info("git repository initialized with a first commit");
 	}
 
+	// A scaffold you can't run yet isn't finished, so offer the install here
+	// rather than leaving four commands in the Next block. Asked rather than
+	// assumed: it downloads a toolchain, and `boil new` on a plane or in a
+	// sandbox should still hand back a project.
+	const installed = await maybeInstall(target, options);
+
 	term.print("");
 	term.print(term.bold("Next"));
 	term.info(`cd ${name}`);
-	term.info("rokit install && wally install");
+	if (!installed) {
+		term.info("boil install                   # toolchain, packages, Rojo plugin");
+	}
 	term.info("boil setup                     # connect a package index");
-	term.info("lune run tools/split --watch   # terminal 1");
-	term.info("rojo serve                     # terminal 2");
+	term.info("boil dev                       # splitter + rojo serve");
 	term.print("");
 	term.print(term.dim("Then connect from Studio's Rojo plugin. Browse packages with `boil explore`."));
 	term.print("");
+}
+
+// Whether the toolchain install ran, so the Next block doesn't ask for it twice.
+async function maybeInstall(target, options) {
+	if (options.install === false) {
+		return false;
+	}
+	// `--yes` takes it as given; a scripted run without a terminal to ask in gets
+	// the scaffold and the printed step, never a hang or a surprise download.
+	if (!options.yes) {
+		if (!term.isInteractive()) {
+			return false;
+		}
+		if (!(await term.confirm("Install the toolchain and dependencies now?"))) {
+			return false;
+		}
+	}
+
+	const result = await toolchain.run({ cwd: target });
+	return result.ran;
 }

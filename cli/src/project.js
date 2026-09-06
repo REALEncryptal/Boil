@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+import * as rokit from "./rokit.js";
 import * as toml from "./toml.js";
 import { escapeRegex, isDir, isFile, listFiles, pascal, readFile, writeFile } from "./util.js";
 
@@ -149,7 +150,11 @@ export function runLune(script) {
 	if (!isFile(`${script}.luau`) && !isDir(script)) {
 		return undefined;
 	}
-	const result = spawnSync("lune", ["run", script], { encoding: "utf8" });
+	const lune = rokit.resolve("lune");
+	if (!lune) {
+		return { ok: false, output: "could not find `lune` — run `boil install`" };
+	}
+	const result = spawnSync(lune, ["run", script], { encoding: "utf8", env: rokit.env() });
 	if (result.error) {
 		return { ok: false, output: `could not run \`lune\` — is Rokit installed? (${result.error.code})` };
 	}

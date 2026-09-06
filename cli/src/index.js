@@ -59,7 +59,10 @@ Install
   add github:owner/repo[@tag] install straight from a git repo
   add path:<dir>              install from a local directory
   remove <package>            uninstall and drop from the lockfile
-  install                     restore everything in boil-lock.toml
+  install                     set this checkout up: rokit install, wally
+                              install, the Rojo Studio plugin, then restore
+                              everything in boil-lock.toml
+                              --update bumps rokit.toml to the newest tools
   update [package]            upgrade to the newest compatible version
   outdated                    what has a newer version available
   list                        what's installed, and what you've edited
@@ -78,8 +81,11 @@ Flags
   --skip-index                setup: only write the project manifest
   --port=<n> --address=<a>    dev: Rojo serve options
   --no-split / --no-serve     dev: run only one half of the loop
+  --update                    install: bump rokit.toml to the newest tools first
+  --no-tools / --no-plugin    install: skip the toolchain, or just the plugin
   --empty / --starter         new: framework only, or with the example features
   --no-git                    new: skip git init
+  --no-install                new: scaffold only, don't install the toolchain
   --template=<url> --ref=<t>  new/upgrade: use a different repo or tag
   --registry=<name>           publish: which registry to register in
   --project                   registry add/remove: write to boil.toml, not ~/.boil
@@ -158,6 +164,7 @@ const HANDLERS = {
 			empty: parsed.flags.empty === true ? true : parsed.flags.starter === true ? false : undefined,
 			yes: parsed.flags.yes === true,
 			git: parsed.flags["no-git"] === true ? false : undefined,
+			install: parsed.flags["no-install"] === true ? false : undefined,
 			template: typeof parsed.flags.template === "string" ? parsed.flags.template : undefined,
 			ref: typeof parsed.flags.ref === "string" ? parsed.flags.ref : undefined,
 		}),
@@ -190,7 +197,12 @@ const HANDLERS = {
 	refresh: () => commands.refresh(),
 	add: (parsed) => commands.add(parsed.args, { force: parsed.flags.force }),
 	remove: (parsed) => commands.remove(parsed.args),
-	install: () => commands.install(),
+	install: (parsed) =>
+		commands.install({
+			update: parsed.flags.update === true,
+			tools: parsed.flags["no-tools"] === true ? false : undefined,
+			plugin: parsed.flags["no-plugin"] === true ? false : undefined,
+		}),
 	update: (parsed) => commands.update(parsed.args, parsed.flags.force === true),
 	outdated: () => commands.outdated(),
 	list: () => commands.list(),

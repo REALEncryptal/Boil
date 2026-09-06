@@ -2,8 +2,12 @@
 
 ## Prerequisites
 
-- **Rokit** — toolchain manager. Install from <https://github.com/rojo-rbx/rokit>.
-- **Roblox Studio** with the Rojo plugin installed.
+- **Node 18.17+**, for the CLI: `npm install -g @encryptal/boil`. Installing it
+  also installs **Rokit**, the toolchain manager that provides rojo, wally and lune.
+- **Roblox Studio.** `boil install` installs the Rojo plugin into it for you.
+
+Not using the CLI? Install Rokit yourself from <https://github.com/rojo-rbx/rokit>
+and follow the by-hand steps below.
 
 ## Starting from scratch
 
@@ -14,18 +18,44 @@ npm install -g @encryptal/boil
 boil new my-game && cd my-game
 ```
 
-It asks for a name and whether you want the example features, then scaffolds the
-framework, renames the project, and makes the first commit. Carry on with the
-one-time setup below.
+It asks for a name, whether you want the example features, and whether to install
+the toolchain now — say yes and the setup below is already done. `--no-install`
+skips the offer.
 
 ## One-time setup
 
 ```bash
-rokit install   # reads rokit.toml, installs rojo, wally, lune
-wally install   # reads wally.toml, populates Packages/
+boil install    # the toolchain, the packages, and the Rojo Studio plugin
 ```
 
+One command for what used to be four, in the order they have to happen:
+
+| Step | What it does |
+| --- | --- |
+| `rokit install` | reads `rokit.toml`, installs rojo, wally, lune |
+| `wally install` | reads `wally.toml`, populates `Packages/` |
+| `rojo plugin install` | installs the Rojo plugin into Studio |
+| restore | re-vendors every package in `boil-lock.toml` (fresh clone of a game) |
+
+`wally` is itself a tool Rokit installs, which is why the order matters — and
+why running `wally install` first on a new machine fails.
+
+Flags: `--update` runs `rokit update` first, bumping `rokit.toml` to the newest
+tool versions (left out of the default run so a plain install never rewrites a
+committed manifest). `--no-plugin` skips the Studio plugin — the right choice in
+CI, where there's no Studio to install into. `--no-tools` restores packages only,
+the command's pre-0.8 behaviour.
+
+Steps that fail are reported and the run carries on, so a missing Studio or a
+network blip doesn't cost you the rest of the install.
+
 After `wally install`, `Packages/` will contain `React.lua`, `ReactRoblox.lua`, `Loader.lua`, and an `_Index/` folder with transitive dependencies.
+
+By hand, without the CLI:
+
+```bash
+rokit install && wally install && rojo plugin install
+```
 
 ## Dev loop
 

@@ -33,7 +33,9 @@ read the cached index and run anywhere at all.
 `lune` is optional but expected in a real project: `add`/`remove`/`update` run
 `tools/split` afterwards, and `publish` runs the repo's lints. Both degrade to a
 warning when the Lune toolchain isn't installed, so the CLI still works in a
-checkout that hasn't run `rokit install` yet.
+checkout that hasn't run `boil install` yet. Tools are looked up on PATH and then
+in `~/.rokit/bin`, so the terminal that installed Rokit doesn't have to be
+restarted before they're usable.
 
 ## Walkthrough
 
@@ -42,7 +44,7 @@ checkout that hasn't run `rokit install` yet.
 ```bash
 npm i -g @encryptal/boil   # also bootstraps Rokit, unless it's already installed
 boil new my-game && cd my-game
-rokit install && wally install
+boil install      # rokit + wally + the Rojo Studio plugin — `boil new` offers to run it
 
 boil setup        # names the project, creates/connects the index, caches it
 boil explore      # browse and install
@@ -53,7 +55,17 @@ toolchain manager behind `rojo`, `wally` and `lune`, which a Boil project can't
 be built or synced without. It's skipped when Rokit is already installed, never
 fails the npm install, and is disabled by `BOIL_SKIP_ROKIT=1` or
 `--ignore-scripts`. Rokit lands in `~/.rokit/bin` and puts itself on PATH via
-your shell profile, so `rokit install` above may need a fresh terminal.
+your shell profile.
+
+`boil install` is the one command that makes a checkout runnable: `rokit install`,
+`wally install`, `rojo plugin install`, then re-vendoring everything in
+`boil-lock.toml`. The order is the point — `wally` is a tool Rokit installs, so
+`wally install` on a machine without the toolchain fails. It is also what a fresh
+clone of an existing game needs, which is why the package restore lives in the
+same command. `--update` bumps `rokit.toml` to the newest tool versions first;
+`--no-plugin` drops the Studio plugin for CI; `--no-tools` restores packages only.
+A failing step warns and the run continues, so one missing piece doesn't cost you
+the rest.
 
 `boil new` clones the framework, strips the parts that belong to *its* repo
 rather than to your game (the CLI itself, the framework's LICENSE, its lockfile),
@@ -62,20 +74,26 @@ for it, and makes the first commit. It asks whether you want the example feature
 or an empty framework — the framework boots either way, which is the point of the
 [framework/feature boundary](game/framework-boundary.md).
 
-Non-interactive: `boil new my-game --starter --yes` (or `--empty`). Scaffold from
-a fork or a pinned release with `--template=<url>` / `--ref=<tag>`.
+It then offers to run `boil install`, so a new project is ready to sync without a
+second command. Say no, or pass `--no-install`, and it prints the step instead —
+scaffolding must still work offline.
+
+Non-interactive: `boil new my-game --starter --yes` (or `--empty`), which takes
+the install as given. Scaffold from a fork or a pinned release with
+`--template=<url>` / `--ref=<tag>`.
 
 The CLI is deliberately **not** copied into the new project — it's a tool you
 install once, not something every game vendors.
 
 `setup` is once per project. It creates the index repo on GitHub if it doesn't
 exist yet — see [Setting up](#setting-up-boil-setup) — and writes the URL into
-`boil.toml`. Then the normal dev loop: `lune run tools/split --watch` in one
-terminal, `rojo serve` in another.
+`boil.toml`. Then the normal dev loop: `boil dev`, or `lune run tools/split
+--watch` in one terminal and `rojo serve` in another.
 
-If someone clones your game later, `boil install` restores anything in
-`boil-lock.toml` that isn't on disk. Usually that's nothing — installs are
-committed — but it repairs a missing folder.
+If someone clones your game later, `boil install` is the only command they need:
+it puts the toolchain and the Studio plugin in place, populates `Packages/`, and
+restores anything in `boil-lock.toml` that isn't on disk. Usually that last part
+is nothing — installs are committed — but it repairs a missing folder.
 
 ### Publishing a feature you built
 
@@ -466,7 +484,7 @@ it. One global install now serves every Boil project on the machine.
 | `list` | Installed packages, versions, and whether each is locally modified. |
 | `outdated` | Installed versions vs. newest compatible in the index. |
 | `update [pkg]` | Upgrade in place. Untouched → overwrite; modified → show a diff and ask. |
-| `install` | Restore everything in `boil-lock.toml` (fresh clone of a game repo). |
+| `install` | The toolchain and this game's packages: `rokit install` → `wally install` → `rojo plugin install` → restore everything in `boil-lock.toml`. `--update`, `--no-plugin`, `--no-tools`. |
 | `publish [path]` | Lint → tag → push the package repo → register the version in the index. With no path, lists this project's features and skins and asks which one. |
 | `doctor` | Missing dependencies, unimplemented contract keys, undeclared Wally requires, Studio assets you haven't created, and whether the CLI itself is out of date. |
 

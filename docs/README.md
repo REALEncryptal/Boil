@@ -13,11 +13,14 @@ Roblox scaffold using **Rojo + Wally + React (jsdotlua)** in a **Feature-Sliced 
 ## TL;DR
 
 ```bash
-rokit install             # one-time: installs rojo, wally, lune
-wally install             # populate Packages/
+boil install              # rokit + wally + the Rojo Studio plugin, one command
+boil dev                  # splitter (watch) + rojo serve
+# connect from Roblox Studio's Rojo plugin
+
+# or by hand:
+rokit install && wally install && rojo plugin install
 lune run tools/split --watch   # terminal 1
 rojo serve                     # terminal 2
-# connect from Roblox Studio's Rojo plugin
 ```
 
 To add a feature: create `src/features/<Name>/` with files named `Something.server.luau`, `Something.client.luau`, `Something.ui.luau`, or plain `Something.luau`. The splitter routes them to ServerScriptService / StarterPlayerScripts / ReplicatedStorage based on the suffix. Services/controllers expose a `.Start()` function; optionally set `.Priority = <number>` to control load order.
