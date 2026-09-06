@@ -9,6 +9,15 @@ local theme = require(script.Parent.theme)
 
 return function(props: contract.IconButtonProps)
 	local accent = theme.accent(props.variant)
+	-- Caller content rides inside the frame, so the hover scale carries it.
+	local content = if props.children
+		then React.createElement("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 3,
+		}, props.children)
+		else nil
 	local hover = useHoverScale()
 	local scale = props.iconScale or 0.6
 
@@ -37,6 +46,8 @@ return function(props: contract.IconButtonProps)
 				ZIndex = 2,
 			})
 			else nil,
+
+		Content = content,
 
 		Trigger = React.createElement("TextButton", {
 			Size = UDim2.fromScale(1, 1),

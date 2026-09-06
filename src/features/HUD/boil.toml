@@ -1,0 +1,27 @@
+# Package manifest for the HUD feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish HUD --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/hud"
+kind = "feature"
+version = "1.0.0"
+description = "The player's heads-up display and the navigation seam: a Nav registry other features add sidebar entries to, corner widget clusters, and one window frame per entry."
+author = "encryptal"
+license = "MIT"
+folder = "HUD"
+
+[dependencies]
+"encryptal/ui-shell" = "^1.0.0"
+"encryptal/sidebar" = "^1.0.0"
+
+[wally]
+React = "jsdotlua/react@17.1.0"
+
+[studio]
+notes = "None. Nav icons come from the features that register them."

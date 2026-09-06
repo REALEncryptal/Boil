@@ -1,0 +1,33 @@
+# Package manifest for the Settings feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish Settings --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/settings"
+kind = "feature"
+version = "1.0.0"
+description = "Registry of categories and toggles that other features declare, validated on the server and persisted through PlayerData. Ships a HUD window and an in-world toggle station."
+author = "encryptal"
+license = "MIT"
+folder = "Settings"
+
+[dependencies]
+"encryptal/player-data" = "^1.0.0"
+
+# Ordering only: loaded after these when present, no warning when absent.
+[soft-dependencies]
+"encryptal/hud" = "^1.0.0"
+
+[wally]
+React = "jsdotlua/react@17.1.0"
+ByteNet = "ffrostflame/bytenet@0.4.6"
+Signal = "sleitnick/signal@2.0.3"
+
+[studio]
+tags = "SettingsToggleStation"
+notes = "For the world presentation: tag a part `SettingsToggleStation` and give it a `SettingId` string attribute naming the setting it flips. The part needs a ProximityPrompt."

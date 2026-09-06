@@ -41,6 +41,10 @@ local function PickupIcon(props: { icon: Types.ActiveIcon, refsMap: { current: R
 		end
 	end, {})
 
+	-- boil-allow-raw: the flying icon's Position and UIScale are mutated per frame
+	-- through refs, deliberately bypassing React. No kit primitive exposes that,
+	-- and routing it through one would reintroduce the per-frame re-render this
+	-- overlay exists to avoid.
 	return React.createElement("ImageLabel", {
 		Image = icon.icon,
 		Size = UDim2.fromOffset(icon.size.X, icon.size.Y),

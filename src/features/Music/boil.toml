@@ -1,0 +1,24 @@
+# Package manifest for the Music feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish Music --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/music"
+kind = "feature"
+version = "1.0.0"
+description = "Background music playback gated on a Settings toggle, so the player can turn it off and the choice persists."
+author = "encryptal"
+license = "MIT"
+folder = "Music"
+
+[dependencies]
+"encryptal/player-data" = "^1.0.0"
+"encryptal/settings" = "^1.0.0"
+
+[studio]
+notes = "Replace Constants.TRACK_ID with your own uploaded audio — the shipped id is a placeholder."

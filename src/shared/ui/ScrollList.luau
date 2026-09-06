@@ -9,15 +9,17 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
+local theme = require(script.Parent.theme)
+local tokens = require(script.Parent.tokens)
 
 export type Direction = "vertical" | "horizontal"
 
 type Props = {
 	direction: Direction?,
-	-- Gap between items (UIListLayout Padding).
-	gap: number?,
-	-- Inner UIPadding on all sides.
-	padding: number?,
+	-- Gap between items. A `theme.space` step name, or reference pixels.
+	gap: (string | number)?,
+	-- Inner inset on all sides. Same units.
+	padding: (string | number)?,
 	horizontalAlignment: Enum.HorizontalAlignment?,
 	verticalAlignment: Enum.VerticalAlignment?,
 	-- Stretch children to fill the available horizontal space (UIListLayout
@@ -47,15 +49,26 @@ type Props = {
 local WHITE = Color3.fromRGB(255, 255, 255)
 
 return function(props: Props)
+	-- gem's own tokens, read directly. A skin implementation must NOT resolve the
+	-- active skin: this file IS the gem skin, and requiring SkinProvider from here
+	-- closes a cycle — skins/init requires gem, gem requires ScrollList, ScrollList
+	-- would require SkinProvider, which requires skins/init. That recursion is a C
+	-- stack overflow at load, not a nice error.
+	--
+	-- Only the semantic wrappers in `init.luau` and the unskinned layout primitives
+	-- (Stack / Row / Grid / Slot, which no skin lists) may call useSkin.
+	local space = theme.space
 	local direction = props.direction or "vertical"
 	local isHorizontal = direction == "horizontal"
+	local gap = tokens.resolveSpace(space, props.gap, space.md)
+	local padding = if props.padding ~= nil then tokens.resolveSpace(space, props.padding, 0) else nil
 
 	local listChildren: { [string]: any } = {
 		UIListLayout = React.createElement("UIListLayout", {
 			FillDirection = if isHorizontal
 				then Enum.FillDirection.Horizontal
 				else Enum.FillDirection.Vertical,
-			Padding = UDim.new(0, props.gap or 0),
+			Padding = UDim.new(0, gap),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			HorizontalAlignment = props.horizontalAlignment or Enum.HorizontalAlignment.Center,
 			VerticalAlignment = props.verticalAlignment or Enum.VerticalAlignment.Top,
@@ -68,12 +81,12 @@ return function(props: Props)
 		}),
 	}
 
-	if props.padding then
+	if padding then
 		listChildren.UIPadding = React.createElement("UIPadding", {
-			PaddingTop = UDim.new(0, props.padding),
-			PaddingBottom = UDim.new(0, props.padding),
-			PaddingLeft = UDim.new(0, props.padding),
-			PaddingRight = UDim.new(0, props.padding),
+			PaddingTop = UDim.new(0, padding),
+			PaddingBottom = UDim.new(0, padding),
+			PaddingLeft = UDim.new(0, padding),
+			PaddingRight = UDim.new(0, padding),
 		})
 	end
 

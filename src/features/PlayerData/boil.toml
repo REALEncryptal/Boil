@@ -1,0 +1,26 @@
+# Package manifest for the PlayerData feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish PlayerData --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/player-data"
+kind = "feature"
+version = "1.0.0"
+description = "Per-player profile persistence on ProfileStore, replicated with ReplicaService. Features claim their own slice of the profile template."
+author = "encryptal"
+license = "MIT"
+folder = "PlayerData"
+
+[wally]
+ReplicaService = "brittonfischer/replicaservice@0.1.0"
+
+[wally-server]
+ProfileStore = "lm-loleris/profilestore@1.0.3"
+
+[studio]
+notes = "None. Set Constants.STORE_NAME before shipping, and enable Studio Access to API Services to test saving."

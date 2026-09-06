@@ -1,0 +1,23 @@
+# Package manifest for the UIShell feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish UIShell --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/ui-shell"
+kind = "feature"
+version = "1.0.0"
+description = "Frame open/close state with enter and exit scale tweens, plus HideWhenFrameOpen for HUD content that slides away while a frame is open."
+author = "encryptal"
+license = "MIT"
+folder = "UIShell"
+
+[wally]
+React = "jsdotlua/react@17.1.0"
+
+[studio]
+notes = "None."

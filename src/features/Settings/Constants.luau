@@ -1,6 +1,14 @@
 -- Shared constants for the Settings feature.
 
 return {
+	-- Frame / nav id. One constant so init.luau, Nav.luau and the presentation
+	-- can't drift apart — the old arrangement spelled this string in three
+	-- places and nothing checked they matched.
+	FRAME_ID = "Settings",
+
+	-- Sidebar icon for the HUD nav entry. Replace with your own asset.
+	NAV_ICON = "rbxassetid://137349421699691",
+
 	-- Key in the player's profile that holds the map of settingId → value.
 	-- Registered into the PlayerData profile template by src/features/Settings/PlayerData.luau.
 	-- Read by the client + server, written by PlayerDataService.SetValue

@@ -1,0 +1,23 @@
+# Package manifest for the Cmdr feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish Cmdr --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/cmdr"
+kind = "feature"
+version = "1.0.0"
+description = "Admin console bootstrap. Features add commands by dropping a *Command.server.luau, which the server entry discovers automatically."
+author = "encryptal"
+license = "MIT"
+folder = "Cmdr"
+
+[wally]
+Cmdr = "evaera/cmdr@1.12.0"
+
+[studio]
+notes = "None. Edit Constants to control who may run commands before shipping."

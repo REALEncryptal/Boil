@@ -8,7 +8,7 @@
 -- The Overlay component is already mounted by src/client/init.client.luau;
 -- features just import this module to spawn icons or subscribe to arrivals.
 --
--- See docs/game/PickupFX.md for the full API.
+-- See docs/game/PickupFX.md for why it is built this way.
 
 local PickupFX = {}
 

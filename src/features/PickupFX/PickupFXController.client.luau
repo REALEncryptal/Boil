@@ -1,7 +1,7 @@
 --!strict
 -- Mounts the PickupFX Overlay in its own ScreenGui with a very high
 -- DisplayOrder so the flying icons draw above every other ScreenGui
--- (BoilRoot, UIShowcase, future feature UIs).
+-- (BoilRoot and every other feature UI).
 --
 -- The Overlay subscribes to the PickupFX Manager singleton; the hooks
 -- (useDestination, useArrival, usePickupSpawn) also talk to the singleton,

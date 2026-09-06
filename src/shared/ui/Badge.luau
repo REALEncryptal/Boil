@@ -14,8 +14,9 @@ local Text = require(script.Parent.Text)
 local theme = require(script.Parent.theme)
 
 type Props = {
-	variant: Assets.VariantKey?,
+	variant: string?,
 	text: string?,
+	role: string?,
 	textSize: number?,
 	icon: string?, -- rbxassetid:// for the leading icon; nil hides the slot
 	size: UDim2?,
@@ -28,33 +29,35 @@ type Props = {
 local PLACEHOLDER_IMAGE = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 
 return function(props: Props)
-	local variantKey = props.variant or "blue"
+	local variantKey = theme.resolveVariant(props.variant or "primary")
 	local variant = Assets.BadgeVariants[variantKey]
 		or Assets.Variants[variantKey]
 		or Assets.Variants.blue
 
 	local innerChildren: { [string]: any } = {
 		UIPadding = React.createElement("UIPadding", {
-			PaddingTop = UDim.new(0, theme.tightPadding),
-			PaddingBottom = UDim.new(0, theme.tightPadding),
-			PaddingLeft = UDim.new(0, theme.padding),
-			PaddingRight = UDim.new(0, theme.padding),
+			PaddingTop = UDim.new(0, theme.space.sm),
+			PaddingBottom = UDim.new(0, theme.space.sm),
+			PaddingLeft = UDim.new(0, theme.space.md),
+			PaddingRight = UDim.new(0, theme.space.md),
 		}),
 		UIListLayout = React.createElement("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0, theme.itemSpacing),
+			Padding = UDim.new(0, theme.space.sm),
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			HorizontalFlex = Enum.UIFlexAlignment.Fill,
 		}),
 
 		TextLabel = React.createElement(Text, {
 			text = props.text or "",
-			textSize = props.textSize or theme.badgeTextSize,
+			role = props.role or theme.roles.badge,
+			textSize = props.textSize,
 			weight = Enum.FontWeight.Heavy,
 			xAlignment = Enum.TextXAlignment.Left,
-			size = UDim2.fromOffset(200, 50),
+			size = UDim2.fromScale(1, 1),
 			layoutOrder = 2,
 			shadow = true,
+			truncate = true,
 		}),
 	}
 

@@ -24,11 +24,12 @@ local useTweenedUDim2 = require(script.Parent.useTweenedUDim2)
 type Props = {
 	-- Clamped to [0, 1].
 	progress: number,
-	variant: Assets.VariantKey?,
+	variant: string?,
 	-- Override the centered label. Pass an empty string to show no text;
 	-- pass nil to use the default "N%" formatter.
 	text: string?,
 	showText: boolean?,
+	role: string?,
 	textSize: number?,
 
 	size: UDim2?,
@@ -52,7 +53,7 @@ local BLEED_TRANSPARENCY = NumberSequence.new({
 })
 
 return function(props: Props)
-	local variantKey = props.variant or "yellow"
+	local variantKey = theme.resolveVariant(props.variant or "warning")
 	local variant = Assets.Variants[variantKey] or Assets.Variants.yellow
 	local clamped = math.clamp(props.progress, 0, 1)
 	local strokeThickness = props.strokeThickness or theme.strokeThickness
@@ -150,7 +151,8 @@ return function(props: Props)
 
 		children.TextLabel = React.createElement(Text, {
 			text = displayText,
-			textSize = props.textSize or 50,
+			role = props.role or "heading",
+			textSize = props.textSize,
 			weight = Enum.FontWeight.Bold,
 			size = UDim2.fromScale(1, 1),
 			position = UDim2.fromScale(0.5, 0.5),

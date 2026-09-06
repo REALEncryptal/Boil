@@ -5,7 +5,7 @@ core (see [headless-core.md](headless-core.md)) can drive several at once:
 
 | Kind | File suffix | Realm | Discovered by | Registers / binds |
 | ---- | ----------- | ----- | ------------- | ----------------- |
-| **Screen** | `*Presentation.client.luau` | client | `init.client.luau` | a HUD window slot (`UIRegistry.registerScreen`) |
+| **Screen** | `*Presentation.client.luau` | client | `init.client.luau` | a HUD window slot (`HUD.setScreen`, paired with a shared `Nav.luau`) |
 | **Root** | `*Presentation.client.luau` | client | `init.client.luau` | an always-mounted top-level element (`UIRegistry.registerRoot`) |
 | **World** | `*WorldInteraction.client.luau` | client | `init.client.luau` | a CollectionService-tagged part → calls a core intent |
 | **Command** | `*Command.server.luau` | server | `init.server.luau` | a Cmdr command → calls a core intent |
@@ -37,7 +37,7 @@ infrastructure, not content.
 `src/shared/utils/UIRegistry.luau` holds two client-side maps:
 - **roots** — `registerRoot(name, element)` / `getRoots()`: always-mounted
   top-level UI (the HUD host, the Health widget).
-- **screens** — `registerScreen(frameId, element)` / `getScreens()`: HUD window
+- **screens** — `HUD.setScreen(navId, element)`: HUD window
   contents keyed by UIShell frame id. The HUD reads these to fill its slots
   (`frameContents` prop still overrides, used by the UI Labs preview).
 
@@ -48,19 +48,25 @@ presentation module checks its flag before registering, so a game can switch a
 surface off without deleting code:
 
 ```lua
--- Notes/Constants.luau
-Presentations = { screen = true, command = true },
 -- Settings/Constants.luau
 Presentations = { screen = true, world = true },
+-- HUD/Constants.luau
+Presentations = { root = true },
 ```
 
 ## The shipped proofs
 
-- **Notes** — screen (`NotesPresentation`) + command (`NotesCommand` → `setnote
-  <text>`). Both route through `NotesService.setNote`, the one validated write.
 - **Settings** — screen (`SettingsPresentation`) + world
   (`SettingsWorldInteraction`). The world part's ProximityPrompt and the Settings
   window both call `SettingsController.setToggle`, staying in sync via the replica.
+  Neither surface knows the other exists.
+- **HUD** — root (`HUDPresentation`). Mounts the heads-up display itself, which is
+  where every other feature's screen surface lands.
+
+A screen surface is now two files rather than one, because its halves live in
+different realms: a shared `Nav.luau` declaring the entry, and a client
+`*Presentation.client.luau` supplying the element via `HUD.setScreen`. See
+[HUD.md](HUD.md).
 
 ### Studio assets the world proof needs (Rojo only syncs code)
 
@@ -75,8 +81,17 @@ A `ProximityPrompt` is added automatically if the part doesn't already have one.
 Walk up to the part, trigger the prompt, and watch the Settings window's Music
 toggle flip in lock-step.
 
-### Trying the Cmdr command
+### Adding a Cmdr command
 
-Open the Cmdr console (the Cmdr feature's keybind) and run `setnote hello`. The
-command is gated by the same username allowlist as every other command
-(`CmdrService`'s BeforeRun hook). Open the Notes window to see the saved value.
+Drop a `*Command.server.luau` in your feature folder; the server entry discovers
+it with no edit anywhere else. Route it through the feature's one core intent —
+the same function the GUI calls — so the two surfaces can't drift:
+
+```lua
+-- Shop/ShopCommand.server.luau
+Cmdr.Registry:RegisterCommand(definition, function(context, amount)
+    ShopService.grant(context.Executor, amount)   -- the same validated write the UI uses
+end)
+```
+
+Commands are gated by the username allowlist in `CmdrService`'s BeforeRun hook.

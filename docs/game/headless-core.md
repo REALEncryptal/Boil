@@ -10,10 +10,10 @@ core can be driven by a screen GUI, an in-world part, or a Cmdr command at once.
 | Layer | Realm | Owns | Examples |
 | ----- | ----- | ---- | -------- |
 | **Registry / store** | shared | content & schema | `Settings/Registry.luau` |
-| **Service** | server | validation, persistence, packet handling | `SettingsService`, `NotesService` |
-| **Controller** | client | the client-side API: read state + **intent actions** | `SettingsController.setToggle`, `NotesController.SetNote` |
+| **Service** | server | validation, persistence, packet handling | `SettingsService`, `PlayerDataService` |
+| **Controller** | client | the client-side API: read state + **intent actions** | `SettingsController.setToggle`, `MusicController.setEnabled` |
 | **Packets** | shared | the wire schema (ByteNet) | `Settings/Packets.luau` |
-| **View / UI** | client / shared | read state, call actions, render | `SettingsView` + `SettingsUI`, `NotesView` + `NotesUI` |
+| **View / UI** | client / shared | read state, call actions, render | `SettingsView` + `SettingsUI`, `HUDView` |
 
 ## The rules
 

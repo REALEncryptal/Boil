@@ -1,0 +1,11 @@
+[[package]]
+name = "encryptal/slop"
+version = "1.0.0"
+kind = "skin"
+source = "registry+https://github.com/REALEncryptal/delta-boil-index"
+tag = "encryptal/slop@1.0.0"
+commit = "8560dbb23f77f61cb5b00c5eb442a31f71c58cf9"
+subdir = "packages/encryptal/slop"
+registry = "delta"
+path = "src/skins/Slop"
+fingerprint = "7b9d9b37fecf5877"

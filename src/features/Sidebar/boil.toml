@@ -1,0 +1,23 @@
+# Package manifest for the Sidebar feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish Sidebar --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/sidebar"
+kind = "feature"
+version = "1.0.0"
+description = "Vertical column of icon entries with hover scale and a per-item signature tilt. Renders no chrome of its own."
+author = "encryptal"
+license = "MIT"
+folder = "Sidebar"
+
+[wally]
+React = "jsdotlua/react@17.1.0"
+
+[studio]
+notes = "Supply your own icon assets — the bundled ids are placeholders."

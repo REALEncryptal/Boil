@@ -5,11 +5,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local contract = require(ReplicatedStorage.Shared.ui.contract)
+local tokens = require(ReplicatedStorage.Shared.ui.tokens)
 local theme = require(script.Parent.theme)
 
 return function(props: contract.ProgressBarProps)
 	local progress = math.clamp(props.progress, 0, 1)
-	local accent = theme.accent(props.variant or "yellow")
+	local accent = theme.accent(props.variant or "warning")
 	local showText = props.showText ~= false
 	local label = props.text or `{math.floor(progress * 100)}%`
 
@@ -43,7 +44,8 @@ return function(props: contract.ProgressBarProps)
 				BackgroundTransparency = 1,
 				Text = label,
 				TextColor3 = theme.textColor,
-				TextSize = props.textSize or theme.textSize,
+				TextSize = props.textSize
+					or tokens.resolveType(theme.type, props.role or "label", theme.type.label),
 				FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold),
 				ZIndex = 3,
 			})

@@ -8,8 +8,10 @@
 -- Mount once near the root:  React.createElement(ui.SkinProvider, { skin = "gem" }, children)
 -- Read in a component:        local skin = ui.useSkin()
 --
--- useSkin() falls back to the gem skin when no provider is mounted, so existing
--- call sites and UI Labs stories work untouched.
+-- useSkin() falls back to the game's DEFAULT skin when no provider is mounted —
+-- the one a skin claimed with `default = true`, or gem if none did. That's what
+-- makes a UI Labs story render in the game's own look without the story knowing
+-- which skin that is.
 --
 -- `skin` is a plain string, resolved against the registry at render: the set of
 -- available skins is open (a game can install more — see docs/registry.md), so it
@@ -31,13 +33,15 @@ type ProviderProps = {
 }
 
 local function SkinProvider(props: ProviderProps)
-	return React.createElement(SkinContext.Provider, { value = skins.get(props.skin or "gem") }, props.children)
+	-- `skins.get(nil)` is the default skin, so omitting `skin` means "the game's
+	-- look" rather than a hardcoded gem.
+	return React.createElement(SkinContext.Provider, { value = skins.get(props.skin) }, props.children)
 end
 
 local function useSkin(): contract.Skin
 	local skin = React.useContext(SkinContext)
 	if skin == nil then
-		return skins.get("gem")
+		return skins.get(nil)
 	end
 	return skin
 end

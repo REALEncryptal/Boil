@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local Assets = require(script.Parent.assets)
 local theme = require(script.Parent.theme)
+local tokens = require(script.Parent.tokens)
 
 type Props = {
 	size: UDim2?,
@@ -20,11 +21,14 @@ type Props = {
 	zIndex: number?,
 	transparency: number?,
 	strokeThickness: number?,
-	padding: number?,
+	-- A `theme.space` step name, or reference pixels.
+	padding: (string | number)?,
 
 	text: string?,
 	defaultText: string?,
 	placeholderText: string?,
+	-- Type role for the input text, e.g. "body". Prefer this over `textSize`.
+	role: string?,
 	textSize: number?,
 	textColor: Color3?,
 	placeholderColor: Color3?,
@@ -44,7 +48,7 @@ type Props = {
 local WHITE = Color3.fromRGB(255, 255, 255)
 
 return function(props: Props)
-	local padding = props.padding or theme.padding
+	local padding = tokens.resolveSpace(theme.space, props.padding, theme.space.md)
 	local font = Font.new(
 		Assets.DISPLAY_FONT_ID,
 		props.weight or Enum.FontWeight.Bold,
@@ -59,7 +63,7 @@ return function(props: Props)
 		TextColor3 = props.textColor or WHITE,
 		PlaceholderColor3 = props.placeholderColor or Color3.fromRGB(180, 180, 180),
 		PlaceholderText = props.placeholderText,
-		TextSize = props.textSize or theme.inputTextSize,
+		TextSize = props.textSize or tokens.resolveType(theme.type, props.role or theme.roles.input, theme.type.body),
 		FontFace = font,
 		TextXAlignment = props.xAlignment or Enum.TextXAlignment.Left,
 		TextYAlignment = props.yAlignment or Enum.TextYAlignment.Center,

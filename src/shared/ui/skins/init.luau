@@ -18,6 +18,21 @@
 -- so no framework code ever names a skin. See docs/registry.md.
 --
 -- Name access works two ways — `skins.get("gem")` or `skins.gem` (metatable).
+--
+-- ---------------------------------------------------------------------------
+-- The default skin
+-- ---------------------------------------------------------------------------
+-- `get(nil)` returns the DEFAULT skin, and an installed skin claims that role by
+-- setting `default = true` in its table. Declaring it in the skin's own data
+-- rather than in framework code has three consequences worth the mechanism:
+--
+--   * The framework still names no skin. It reads a flag; it doesn't know "slop".
+--   * It works in edit mode. UI Labs never runs the client entry script, so a
+--     default set from there would leave every story rendering gem.
+--   * It survives `boil upgrade`, which replaces src/shared/ but never src/skins/.
+--
+-- With nothing declared the default is gem. Two skins declaring it is a mistake,
+-- so it warns and keeps the first alphabetically — deterministic beats arbitrary.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,6 +44,9 @@ local registry: { [string]: contract.Skin } = {}
 local discovered = false
 local warned: { [string]: boolean } = {}
 
+-- Nil until a skin claims it; `getDefault` resolves nil to gem.
+local defaultName: string? = nil
+
 -- A skin is a name + a token table + component implementations. Anything under
 -- ReplicatedStorage.Skins that doesn't look like one is skipped with a warning
 -- rather than erroring — one malformed installed skin must not break the game.
@@ -36,11 +54,34 @@ local function isSkin(value: any): boolean
 	return typeof(value) == "table" and typeof(value.name) == "string" and typeof(value.components) == "table"
 end
 
+local function claimDefault(skin: contract.Skin)
+	if (skin :: any).default ~= true then
+		return
+	end
+	if defaultName ~= nil and defaultName ~= skin.name then
+		local keep = if defaultName < skin.name then defaultName else skin.name
+		warn(
+			`[skins] both "{defaultName}" and "{skin.name}" declare default = true; `
+				.. `keeping "{keep}". Only one skin may claim it.`
+		)
+		defaultName = keep
+		return
+	end
+	defaultName = skin.name
+end
+
 local function register(skin: contract.Skin): contract.Skin
 	if not isSkin(skin) then
 		error("[skins] register expects { name, theme, components }", 2)
 	end
+	-- A malformed theme renders nil sizes rather than erroring, which is very
+	-- hard to trace back. Say so at register time instead.
+	local problems = contract.checkTheme(skin.theme)
+	if #problems > 0 then
+		warn(`[skins] "{skin.name}" has an incomplete theme: {table.concat(problems, "; ")}`)
+	end
 	registry[skin.name] = skin
+	claimDefault(skin)
 	return skin
 end
 
@@ -62,7 +103,9 @@ local function discover()
 			warn(`[skins] "{child.Name}" did not return a skin table; skipped`)
 			continue
 		end
-		registry[(result :: contract.Skin).name] = result
+		local installed = result :: contract.Skin
+		registry[installed.name] = installed
+		claimDefault(installed)
 	end
 end
 
@@ -74,9 +117,32 @@ local function ensureDiscovered()
 	discover()
 end
 
+-- The name `get(nil)` resolves to. Gem when no skin claimed the role.
+local function getDefault(): string
+	ensureDiscovered()
+	if defaultName ~= nil and registry[defaultName] ~= nil then
+		return defaultName
+	end
+	return "gem"
+end
+
+-- Override the default at runtime. Rarely needed — a skin declaring
+-- `default = true` is the normal route — but useful for a settings toggle that
+-- lets a player pick a skin.
+local function setDefault(name: string?)
+	ensureDiscovered()
+	if name ~= nil and registry[name] == nil then
+		warn(`[skins] setDefault("{name}") — no such skin is installed; ignoring`)
+		return
+	end
+	defaultName = name
+end
+
 local function get(name: string?): contract.Skin
 	ensureDiscovered()
-	local skin = registry[name or ""]
+	-- No name means "whatever this game defaults to", not "gem".
+	local key = name or getDefault()
+	local skin = registry[key]
 	if skin then
 		return skin
 	end
@@ -128,6 +194,8 @@ register(require(script.flat))
 
 local skins = {
 	get = get,
+	getDefault = getDefault,
+	setDefault = setDefault,
 	names = names,
 	all = all,
 	register = register,

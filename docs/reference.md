@@ -15,7 +15,7 @@
 | `React`       | `jsdotlua/react@17.1.0`         | `require(ReplicatedStorage.Packages.React)`                           |
 | `ReactRoblox` | `jsdotlua/react-roblox@17.1.0`  | `require(ReplicatedStorage.Packages.ReactRoblox)` — for `createRoot`  |
 | `Loader`      | `sleitnick/loader@2.0.0`        | `require(ReplicatedStorage.Packages.Loader)` — module auto-loader     |
-| `ByteNet`     | `ffrostflame/bytenet@0.4.6`     | **Networking.** Schema-defined packets, buffer-packed. See `src/features/Notes/Packets.luau` for the canonical pattern. Docs: <https://ffrostflame.github.io/ByteNet/> |
+| `ByteNet`     | `ffrostflame/bytenet@0.4.6`     | **Networking.** Schema-defined packets, buffer-packed. See `src/features/Settings/Packets.luau` for the canonical pattern. Docs: <https://ffrostflame.github.io/ByteNet/> |
 | `Trove`       | `sleitnick/trove@1.8.0`         | `require(ReplicatedStorage.Packages.Trove)` — track & clean up instances, connections, tasks. Docs: <https://sleitnick.github.io/RbxUtil/api/Trove> |
 | `Signal`      | `sleitnick/signal@2.0.3`        | `require(ReplicatedStorage.Packages.Signal)` — typed Lua signals (`Signal.new()`). Docs: <https://sleitnick.github.io/RbxUtil/api/Signal> |
 | `ReplicaService` | `brittonfischer/replicaservice@0.1.0` | Shared realm. Server: `require(ReplicatedStorage.Packages.ReplicaService)` for `ReplicaService`. Client: the same path exposes `ReplicaController`. Docs: <https://madstudioroblox.github.io/ReplicaService/> |
@@ -119,13 +119,15 @@ local data  = utils.useReplica(PlayerDataController)
 local coins = utils.useReplica(PlayerDataController, "Coins")
 ```
 
-## LoadOrdered (src/shared/utils/LoadOrdered.luau)
+## FeatureLoader (src/shared/utils/FeatureLoader.luau)
 
 ```lua
-local LoadOrdered = require(ReplicatedStorage.Shared.utils.LoadOrdered)
+local FeatureLoader = require(ReplicatedStorage.Shared.utils.FeatureLoader)
 
 local modules = Loader.LoadDescendants(root)
-Loader.SpawnAll(LoadOrdered(modules), "Start")
+FeatureLoader.verify(SharedFeatures)
+local services = FeatureLoader.load(ServerFeatures, "Service$", SharedFeatures)
+Loader.SpawnAll(services, "Start")
 ```
 
 Sorts in place by each module's `.Priority` field (ascending). Modules where `.Priority` is absent or not a number sort to the end. Returns the same list for chaining.
@@ -207,7 +209,8 @@ Three lower-level pieces are also exported and reusable when building new gem-st
 
 - `ui.Text` — TextLabel using the gem display font. `shadow = true` opts into the two-layer drop-shadow (black shadow + white foreground offset by `-2px`, each with a Miter UIStroke) that Button and Badge use internally. Default is a plain single-layer label — use that for cleaner non-gem surfaces (e.g. the Sidebar's labels).
 - `ui.GemBackground` — the noise-tiled gradient Frame with the inner-glow stroke, black miter outline, and an optional `hasShine` shine stroke. Used internally by Button (`hasShine = true`) and Badge.
-- `ui.Window` — full window layout: dark glass Panel + top bar (optional Badge title + optional close Button) + scrollable content area. Children passed in are mounted directly into the scroll body. Use for any new feature window — see `src/features/UIShowcase/UIShowcase.ui.luau` for the call pattern.
+- `ui.Window` — full window layout: dark glass Panel + top bar (optional Badge title + optional close Button) + scrollable content area. Children passed in are mounted directly into the scroll body. Mounts its own `ui.Surface`, so `size` is in reference pixels. Use for any new feature window — see `src/shared/ui/Window.story.luau` for the call pattern.
+- `ui.Surface` — the responsive seam: a transparent Frame carrying the viewport `UIScale`. Wrap any feature UI that isn't already a Window. See [game/responsive.md](game/responsive.md).
 
 ### Skin seam (`ui.SkinProvider` / `ui.useSkin` / `ui.contract`)
 
@@ -262,7 +265,7 @@ The inspector walks the selection, prints non-default properties for every known
 
 ### UI Labs stories
 
-Each primitive has a sibling `*.story.luau` file that the [UI Labs](https://pepeeltoro41.github.io/ui-labs/) Studio plugin auto-discovers. Stories return `{ react, reactRoblox, story, controls, summary }`. The splitter passes `.story.luau` through unchanged (no special suffix handling), so a feature can ship its own story too — see `src/features/UIShowcase/UIShowcase.story.luau`.
+Each primitive has a sibling `*.story.luau` file that the [UI Labs](https://pepeeltoro41.github.io/ui-labs/) Studio plugin auto-discovers. Stories return `{ react, reactRoblox, story, controls, summary }`. The splitter passes `.story.luau` through unchanged (no special suffix handling), so a feature can ship its own story too — see `src/features/HUD/HUDView.story.luau`. Stories require `ReplicatedStorage.DevPackages.UILabs`; `lune run tools/split -- --no-stories` leaves them out of a production build. `tools/check-ui` requires a story per component.
 
 Non-trivial controls use the UI Labs utility package (Wally `pepeeltoro41/ui-labs`):
 
@@ -353,7 +356,7 @@ Client-side registries presentations register themselves into, so the entry file
 | API | Usage |
 | --- | ----- |
 | `UIRegistry.registerRoot(name, element)` / `getRoots()` | Always-mounted top-level UI (HUD host, Health widget). |
-| `UIRegistry.registerScreen(frameId, element)` / `getScreens()` | HUD window contents keyed by UIShell frame id. |
+| `HUD.setScreen(navId, element)` / `getScreen(id)` | Window contents, keyed by nav id and validated against the HUD's `Nav` registry. Owned by the HUD feature, not the framework — see [game/HUD.md](game/HUD.md). |
 
 A feature opts in with a `*Presentation.client.luau` that registers at load; `init.client.luau` requires those before mounting. See [presentations.md](game/presentations.md).
 

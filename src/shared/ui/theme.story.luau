@@ -1,125 +1,249 @@
 --!nonstrict
--- UI Labs story for the shared design tokens (`ui.theme`).
+-- UI Labs story for the design tokens — the place to settle how big everything is.
 --
--- Each slider mutates the corresponding field on the shared `theme` table.
--- Every primitive reads `theme.X` on each render, so moving a slider
--- updates the showcase below *and* anything else mounted in the session
--- (other open UI Labs stories, the in-game UI if running). The mutations
--- persist for the current Studio session — once you've settled on values,
--- copy them into `src/shared/ui/theme.luau` to make them permanent.
+-- Sliders mutate the shared `theme` table in place. Every primitive reads
+-- `theme.type.*` / `theme.space.*` on each render, so moving a slider updates
+-- this story AND anything else mounted in the session (other stories, the live
+-- game if it's running). Changes last for the Studio session; once you like a
+-- value, copy it into `src/shared/ui/tokens.luau` (shared defaults) or
+-- `src/shared/ui/theme.luau` (gem-only) to keep it.
 --
--- The showcase deliberately mounts one of each primitive so you can see
--- the effect of token changes on Button, Badge, Panel, TextField, Text,
--- and Window all at once.
+-- ---------------------------------------------------------------------------
+-- Two knobs do most of the work
+-- ---------------------------------------------------------------------------
+--   Type scale   — multiplies all six type roles at once. Start here: if the UI
+--                  reads small or shouty as a whole, this is the fix, and it
+--                  keeps the ratios between roles intact.
+--   Space scale  — same idea for the six spacing steps.
+--
+-- The per-role sliders below are for adjusting ONE role relative to the others
+-- (a title that's fighting its window, say). Reach for them second.
+--
+-- ---------------------------------------------------------------------------
+-- Sizes here are REFERENCE pixels (1280x720)
+-- ---------------------------------------------------------------------------
+-- `Preview device` re-renders the showcase at another device's scale, so you can
+-- see what a phone actually gets without leaving the desktop. Numbers on the
+-- ruler show `reference → screen` at the previewed scale.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local UILabs = require(ReplicatedStorage.Packages.UILabs)
+local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local ui = require(ReplicatedStorage.Shared.ui)
 
-local REBIRTH_ICON = "rbxassetid://137349421699691"
+local ICON = "rbxassetid://137349421699691"
+
+local TYPE_ROLES = { "display", "title", "heading", "body", "label", "caption" }
+local SPACE_STEPS = { "xs", "sm", "md", "lg", "xl", "xxl" }
+
+-- Base values captured once at module load, so the multipliers always scale the
+-- ORIGINAL ladder rather than compounding on the last frame's result.
+local BASE_TYPE = table.clone(ui.tokens.type)
+local BASE_SPACE = table.clone(ui.tokens.space)
+
+-- One row of the type ruler: the role name, its numbers, and a sample set at it.
+local function typeRow(role: string, order: number, scale: number)
+	local size = ui.theme.type[role]
+	return React.createElement(ui.Row, {
+		gap = "md",
+		size = UDim2.new(1, 0, 0, math.max(size, 24) + 8),
+		layoutOrder = order,
+		horizontalAlignment = Enum.HorizontalAlignment.Left,
+	}, {
+		Meta = React.createElement(ui.Text, {
+			text = `{role}  {math.round(size)} → {math.round(size * scale)}px`,
+			role = "caption",
+			color = ui.theme.mutedText,
+			xAlignment = Enum.TextXAlignment.Left,
+			size = UDim2.fromOffset(240, 0),
+			layoutOrder = 1,
+		}),
+		Sample = React.createElement(ui.Text, {
+			text = "Rebirth 12  ·  Gems 4,200",
+			role = role,
+			xAlignment = Enum.TextXAlignment.Left,
+			truncate = true,
+			size = UDim2.new(1, -252, 1, 0),
+			layoutOrder = 2,
+		}),
+	})
+end
+
+-- One swatch of the space ruler: a bar as wide as the step.
+local function spaceRow(step: string, order: number, scale: number)
+	local value = ui.theme.space[step]
+	return React.createElement(ui.Row, {
+		gap = "md",
+		size = UDim2.new(1, 0, 0, 28),
+		layoutOrder = order,
+		horizontalAlignment = Enum.HorizontalAlignment.Left,
+	}, {
+		Meta = React.createElement(ui.Text, {
+			text = `{step}  {math.round(value)} → {math.round(value * scale)}px`,
+			role = "caption",
+			color = ui.theme.mutedText,
+			xAlignment = Enum.TextXAlignment.Left,
+			size = UDim2.fromOffset(240, 0),
+			layoutOrder = 1,
+		}),
+		Bar = React.createElement("Frame", {
+			Size = UDim2.fromOffset(math.max(value, 1), 14),
+			BackgroundColor3 = ui.theme.textColor,
+			BackgroundTransparency = 0.35,
+			BorderSizePixel = 0,
+			LayoutOrder = 2,
+		}),
+	})
+end
 
 return {
-	summary = "Live-tune shared design tokens. Sliders mutate `ui.theme.*` — every primitive picks up the new values on next render. Copy values you like back into `theme.luau` to make them permanent.",
+	summary = "Settle how big everything is. `Type scale` and `Space scale` move the whole ladder; the per-role sliders nudge one role. `Preview device` shows what a phone gets. Copy values you like into tokens.luau.",
 	react = React,
 	reactRoblox = ReactRoblox,
 
 	controls = {
-		-- Strokes
+		-- The two you want first.
+		typeScale = UILabs.Slider(1, 0.6, 1.8, 0.05),
+		spaceScale = UILabs.Slider(1, 0.5, 2, 0.05),
+		previewDevice = UILabs.Choose({ "actual", "desktop", "tablet", "phone" }),
+
+		-- Per-role type, as a multiplier on that role alone.
+		display = UILabs.Slider(1, 0.5, 2, 0.05),
+		title = UILabs.Slider(1, 0.5, 2, 0.05),
+		heading = UILabs.Slider(1, 0.5, 2, 0.05),
+		body = UILabs.Slider(1, 0.5, 2, 0.05),
+		label = UILabs.Slider(1, 0.5, 2, 0.05),
+		caption = UILabs.Slider(1, 0.5, 2, 0.05),
+
+		-- Surface details.
 		strokeThickness = UILabs.Slider(ui.theme.strokeThickness, 0, 16, 1),
 		thinStrokeThickness = UILabs.Slider(ui.theme.thinStrokeThickness, 0, 10, 1),
-		-- Surface
 		glassTransparency = UILabs.Slider(ui.theme.glassTransparency, 0, 1, 0.05),
-		-- Padding & spacing
-		padding = UILabs.Slider(ui.theme.padding, 0, 40, 1),
-		tightPadding = UILabs.Slider(ui.theme.tightPadding, 0, 40, 1),
-		itemSpacing = UILabs.Slider(ui.theme.itemSpacing, 0, 40, 1),
-		contentSpacing = UILabs.Slider(ui.theme.contentSpacing, 0, 60, 1),
-		-- Text
-		textSize = UILabs.Slider(ui.theme.textSize, 8, 120, 1),
-		buttonTextSize = UILabs.Slider(ui.theme.buttonTextSize, 8, 120, 1),
-		badgeTextSize = UILabs.Slider(ui.theme.badgeTextSize, 8, 120, 1),
-		inputTextSize = UILabs.Slider(ui.theme.inputTextSize, 8, 120, 1),
-		textForegroundOffset = UILabs.Slider(ui.theme.textForegroundOffset, -10, 10, 1),
-		-- Hover scale
+
+		-- Motion.
 		hoverScale = UILabs.Slider(ui.theme.hoverScale, 1, 1.5, 0.01),
 		pressScale = UILabs.Slider(ui.theme.pressScale, 0.5, 1, 0.01),
-		hoverDuration = UILabs.Slider(ui.theme.hoverDuration, 0, 1, 0.01),
-		pressDuration = UILabs.Slider(ui.theme.pressDuration, 0, 1, 0.01),
 	},
 
 	story = function(props)
 		local c = props.controls
 
-		-- Push slider values into the shared theme table. Mutating the
-		-- module table is intentional — every primitive reads `theme.X` on
-		-- each render, so this is how a live edit propagates.
+		-- Mutating the shared module table is deliberate: every primitive reads
+		-- these on render, so one assignment re-pitches the whole kit live.
+		for _, role in TYPE_ROLES do
+			ui.theme.type[role] = math.round(BASE_TYPE[role] * c.typeScale * (c[role] or 1))
+		end
+		for _, step in SPACE_STEPS do
+			ui.theme.space[step] = math.round(BASE_SPACE[step] * c.spaceScale)
+		end
 		ui.theme.strokeThickness = c.strokeThickness
 		ui.theme.thinStrokeThickness = c.thinStrokeThickness
 		ui.theme.glassTransparency = c.glassTransparency
-		ui.theme.padding = c.padding
-		ui.theme.tightPadding = c.tightPadding
-		ui.theme.itemSpacing = c.itemSpacing
-		ui.theme.contentSpacing = c.contentSpacing
-		ui.theme.textSize = c.textSize
-		ui.theme.buttonTextSize = c.buttonTextSize
-		ui.theme.badgeTextSize = c.badgeTextSize
-		ui.theme.inputTextSize = c.inputTextSize
-		ui.theme.textForegroundOffset = c.textForegroundOffset
-		ui.theme.hoverScale = c.hoverScale
-		ui.theme.pressScale = c.pressScale
-		ui.theme.hoverDuration = c.hoverDuration
-		ui.theme.pressDuration = c.pressDuration
+		ui.theme.motion.hoverScale = c.hoverScale
+		ui.theme.motion.pressScale = c.pressScale
 
-		-- Showcase: one of each primitive, stacked into the Window's
-		-- scroll body so its content padding / spacing tokens are exercised.
-		return React.createElement(ui.Window, {
-			title = "Theme Showcase",
-			icon = REBIRTH_ICON,
-			titleVariant = "purple",
-			size = UDim2.fromOffset(720, 560),
+		local device = if c.previewDevice == "actual" then nil else c.previewDevice
+		local scale = if device
+			then ui.viewport.scaleFor(ui.viewport.size(), device)
+			else ui.viewport.scaleFor(ui.viewport.size())
+
+		local showcase = React.createElement(ui.Window, {
+			title = "Type & space",
+			icon = ICON,
+			titleVariant = "special",
+			size = UDim2.fromOffset(760, 560),
 			onClose = function() end,
 		}, {
-			RedButton = React.createElement(ui.Button, {
-				variant = "red",
-				text = "Red",
-				size = UDim2.fromOffset(220, 64),
+			TypeHeader = React.createElement(ui.Text, {
+				text = `TYPE  ·  {c.previewDevice} @ {string.format("%.2f", scale)}x`,
+				role = "caption",
+				color = ui.theme.mutedText,
+				xAlignment = Enum.TextXAlignment.Left,
+				size = UDim2.new(1, 0, 0, 22),
 				layoutOrder = 1,
 			}),
-			BlueBadge = React.createElement(ui.Badge, {
-				variant = "blue",
-				text = "Blue badge",
-				icon = REBIRTH_ICON,
-				size = UDim2.fromOffset(360, 72),
-				layoutOrder = 2,
+			Display = typeRow("display", 2, scale),
+			Title = typeRow("title", 3, scale),
+			Heading = typeRow("heading", 4, scale),
+			Body = typeRow("body", 5, scale),
+			Label = typeRow("label", 6, scale),
+			Caption = typeRow("caption", 7, scale),
+
+			Wrapped = React.createElement(ui.Text, {
+				text = "Body copy wraps now instead of clipping, which is what lets a"
+					.. " description sit in a window without being cut off mid-word.",
+				role = "body",
+				color = ui.theme.mutedText,
+				wrap = true,
+				xAlignment = Enum.TextXAlignment.Left,
+				size = UDim2.new(1, 0, 0, 64),
+				layoutOrder = 8,
 			}),
-			YellowBadge = React.createElement(ui.Badge, {
-				variant = "yellow",
-				text = "Yellow badge",
-				icon = REBIRTH_ICON,
-				size = UDim2.fromOffset(360, 72),
-				layoutOrder = 3,
+
+			SpaceHeader = React.createElement(ui.Text, {
+				text = "SPACE",
+				role = "caption",
+				color = ui.theme.mutedText,
+				xAlignment = Enum.TextXAlignment.Left,
+				size = UDim2.new(1, 0, 0, 22),
+				layoutOrder = 9,
+			}),
+			Xs = spaceRow("xs", 10, scale),
+			Sm = spaceRow("sm", 11, scale),
+			Md = spaceRow("md", 12, scale),
+			Lg = spaceRow("lg", 13, scale),
+			Xl = spaceRow("xl", 14, scale),
+			Xxl = spaceRow("xxl", 15, scale),
+
+			ControlsHeader = React.createElement(ui.Text, {
+				text = "IN CONTEXT",
+				role = "caption",
+				color = ui.theme.mutedText,
+				xAlignment = Enum.TextXAlignment.Left,
+				size = UDim2.new(1, 0, 0, 22),
+				layoutOrder = 16,
+			}),
+			Buttons = React.createElement(ui.Row, {
+				gap = "md",
+				size = UDim2.new(1, 0, 0, 64),
+				layoutOrder = 17,
+				horizontalAlignment = Enum.HorizontalAlignment.Left,
+			}, {
+				Primary = React.createElement(ui.Button, {
+					variant = "primary",
+					text = "Claim",
+					size = UDim2.fromOffset(180, 60),
+					layoutOrder = 1,
+				}),
+				Danger = React.createElement(ui.Button, {
+					variant = "danger",
+					text = "Reset",
+					size = UDim2.fromOffset(180, 60),
+					layoutOrder = 2,
+				}),
+				Check = React.createElement(ui.Checkbox, { checked = true, variant = "success", layoutOrder = 3 }),
+			}),
+			BadgeRow = React.createElement(ui.Badge, {
+				variant = "warning",
+				text = "4,200 Gems",
+				icon = ICON,
+				size = UDim2.new(1, 0, 0, 72),
+				layoutOrder = 18,
 			}),
 			Input = React.createElement(ui.TextField, {
-				placeholderText = "Type to test input padding…",
-				defaultText = "Hello world",
-				size = UDim2.fromOffset(420, 72),
-				layoutOrder = 4,
-			}),
-			ShadowText = React.createElement(ui.Text, {
-				text = "Shadow text",
-				shadow = true,
-				size = UDim2.fromOffset(420, 60),
-				layoutOrder = 5,
-			}),
-			PlainText = React.createElement(ui.Text, {
-				text = "Plain text",
-				strokeThickness = ui.theme.thinStrokeThickness,
-				size = UDim2.fromOffset(420, 60),
-				layoutOrder = 6,
+				placeholderText = "Input at the body role…",
+				size = UDim2.new(1, 0, 0, 64),
+				layoutOrder = 19,
 			}),
 		})
+
+		-- Previewing a device means overriding the viewport the Surfaces read, so
+		-- the whole showcase renders at that device's scale.
+		if device then
+			return React.createElement(ui.ViewportProvider, { device = device }, { Showcase = showcase })
+		end
+		return showcase
 	end,
 }

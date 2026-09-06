@@ -10,6 +10,7 @@ sourcemap.json
 # Dependencies
 /Packages
 /ServerPackages
+/DevPackages
 /node_modules
 
 # Toolchain

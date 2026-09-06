@@ -4,7 +4,7 @@
 -- HUD / side bar content can subscribe via <HideWhenFrameOpen> to slide
 -- off-screen while any frame is open.
 --
--- See docs/game/UIShell.md for the full API.
+-- See docs/game/UIShell.md for why it is built this way.
 
 local UIShell = {}
 

@@ -1,111 +1,160 @@
 --!strict
--- Centralized design tokens for the shared UI primitives. Every visual
--- default in `src/shared/ui/` reads from this module — changing a value
--- here flows out to every consumer (props still override per call site).
+-- Gem skin tokens.
 --
--- All tokens here are base values. Relationships between tokens (e.g.
--- Window's top content padding being `padding + strokeThickness` to clear
--- the stroke) live at the consumer's render site so they recompute every
--- frame — which means a live theme mutation in the UI Labs Theme story
--- propagates through immediately.
+-- Built on `tokens.luau`, which supplies the two scales every skin must speak —
+-- `type` (six named roles) and `space` (six steps on a 4px rhythm). This file
+-- adds only what is specific to the gem look: stroke weights, glass opacity,
+-- surface dimensions, and the map from semantic variant to gem palette.
 --
--- Add new tokens here rather than inlining magic numbers in components.
--- If you need a value that's *almost* one of these but slightly different,
--- consider whether the existing token should change or whether the
--- difference is component-specific (in which case keep it inline).
+-- ---------------------------------------------------------------------------
+-- Every number here is in REFERENCE PIXELS (1280×720), not screen pixels.
+-- ---------------------------------------------------------------------------
+-- A `ui.Surface` multiplies them by the viewport scale at render, so `space.lg`
+-- is 20 here and 30 on a 1080p monitor. Author against the reference; never
+-- reach for the real screen size unless the *layout itself* has to change.
+--
+-- Tunable live: the UI Labs Theme story mutates this table and every primitive
+-- picks up the new values on the next render, because tokens are read at render
+-- time and never captured at module scope. Copy values you like back into this
+-- file to keep them.
+
+local tokens = require(script.Parent.tokens)
 
 local theme = {}
+
+theme.tokens = tokens
+
+------------------------------------------------------------------------------
+-- Shared scales (required by the contract — same keys in every skin)
+------------------------------------------------------------------------------
+-- Cloned rather than aliased so the Theme story can retune gem without silently
+-- retuning flat and every installed skin along with it.
+theme.type = table.clone(tokens.type)
+theme.space = table.clone(tokens.space)
+theme.motion = table.clone(tokens.motion)
+
+-- Which type role each primitive uses when the call site names none. Change one
+-- of these to re-pitch a whole class of control at once.
+theme.roles = {
+	default = "body",
+	button = "heading",
+	badge = "title",
+	input = "body",
+	windowTitle = "title",
+}
 
 ------------------------------------------------------------------------------
 -- Strokes
 ------------------------------------------------------------------------------
--- Gem-style outline used by Button, Panel, TextField, and GemBackground's
--- outer / glow / shine strokes.
+-- Gem outline used by Button, Panel, TextField and GemBackground.
 theme.strokeThickness = 4
--- Thinner outline used by non-gem text (Sidebar label, Text body when
--- `strokeThickness` is unset) and the inner Text shadow layer.
+-- Thinner outline for text. Applied only when a label opts in — body copy reads
+-- badly with an outline eating its counters, which is half of why small text
+-- looked muddy before.
 theme.thinStrokeThickness = 2
 
 ------------------------------------------------------------------------------
 -- Surface
 ------------------------------------------------------------------------------
--- Translucent dark glass background transparency (Panel, TextField).
 theme.glassTransparency = 0.8
 
 ------------------------------------------------------------------------------
--- Padding & spacing (all in pixels)
+-- Colours
 ------------------------------------------------------------------------------
--- Default inner padding used by TextField, Badge (horizontal), and Window
--- content edges.
-theme.padding = 10
--- Tight padding used by Badge top/bottom (less vertical breathing room
--- because the icon already provides visual height).
-theme.tightPadding = 5
--- Spacing between row items inside a single component (e.g. Badge: gap
--- between icon and text).
-theme.itemSpacing = 10
--- Spacing between stacked content rows inside a Window's scroll body.
-theme.contentSpacing = 15
+-- Semantic text colours. Gem shipped without these, which is why feature code
+-- reached for raw `Color3.fromRGB` literals — the same class of drift the type
+-- and space scales fix. Named here so a call site asks for a ROLE.
+theme.textColor = Color3.fromRGB(255, 255, 255)
+theme.mutedText = Color3.fromRGB(188, 196, 210)
+theme.shadowColor = Color3.fromRGB(0, 0, 0)
 
 ------------------------------------------------------------------------------
--- Text
+-- Component dimensions (reference pixels)
 ------------------------------------------------------------------------------
--- Standardized size ladder. Prefer these tier tokens at feature call sites
--- over hard-coded numbers — a single edit here re-scales every UI that uses
--- the ladder. Use cases noted in each comment.
-theme.textSizeXL = 60      -- Window / badge titles (e.g. "Index" header).
-theme.textSizeLarge = 44   -- Section headers, prominent stats.
-theme.textSizeRegular = 32 -- Body labels (card rarity / name, captions).
-theme.textSizeSmall = 24   -- Sidebar pills, secondary copy.
-theme.textSizeXS = 20      -- Tiny metadata (progress-bar counters, footnotes).
+theme.buttonSize = UDim2.fromOffset(60, 60)
+theme.windowSize = UDim2.fromOffset(760, 520)
+theme.topBarHeight = 60
+-- Horizontal overflow of the top bar past the panel edge (gem accent).
+theme.topBarOverflow = 8
+theme.textFieldSize = UDim2.fromOffset(300, 60)
+theme.rowHeight = 56
+theme.checkboxSize = 40
 
--- Component defaults. Mapped to the ladder so existing primitives stay in
--- step: Badge title is XL, Button label is XL, TextField input is Large.
--- The generic Text default also lands on XL. Override per call site when
--- a specific instance needs to deviate from its default tier.
-theme.textSize = theme.textSizeXL
-theme.buttonTextSize = theme.textSizeXL
-theme.badgeTextSize = theme.textSizeXL
-theme.inputTextSize = theme.textSizeLarge
+-- Noise tile. Sized in reference pixels like everything else, so the grain reads
+-- the same on every display instead of getting finer as resolution climbs.
+theme.tileSize = UDim2.fromOffset(115, 115)
+theme.badgeTileSize = UDim2.fromOffset(80, 80)
+
+------------------------------------------------------------------------------
+-- Variant mapping
+------------------------------------------------------------------------------
+-- Semantic role → gem palette key. Call sites should name the ROLE ("danger"),
+-- not the colour ("red"): that is what lets a skin reinterpret intent, and what
+-- lets a skin add a variant the framework never shipped.
+--
+-- The seven legacy colour names still resolve to themselves, so existing call
+-- sites keep rendering exactly as they did.
+theme.variantForRole = {
+	primary = "blue",
+	secondary = "white",
+	danger = "red",
+	success = "green",
+	warning = "yellow",
+	neutral = "white",
+	special = "rainbow",
+}
+
+function theme.resolveVariant(key: string?): string
+	if key == nil then
+		return "blue"
+	end
+	return theme.variantForRole[key] or key
+end
+
 -- Inner shadow-layer vertical offset for Text's drop-shadow effect.
 theme.textForegroundOffset = -2
 
 ------------------------------------------------------------------------------
--- Button
+-- Legacy token names
 ------------------------------------------------------------------------------
-theme.buttonSize = UDim2.fromOffset(60, 60)
+-- The pre-scale vocabulary (`textSizeXL`, `padding`, `hoverScale`, …), kept so
+-- call sites written against it keep rendering while they migrate to roles.
+--
+-- Resolved through a metatable rather than copied, so they stay live: retuning
+-- `theme.type.body` in the Theme story moves `theme.textSizeSmall` with it. A
+-- plain copy would have frozen at load and silently desynced.
+--
+-- New code uses `theme.type.<role>` and `theme.space.<step>`. Nothing here is
+-- part of the skin contract — a skin is not required to provide these.
+local legacy: { [string]: (typeof(theme)) -> any } = {
+	textSizeXL = function(t) return t.type.display end,
+	textSizeLarge = function(t) return t.type.title end,
+	textSizeRegular = function(t) return t.type.heading end,
+	textSizeSmall = function(t) return t.type.body end,
+	textSizeXS = function(t) return t.type.label end,
+	textSize = function(t) return t.type.body end,
+	buttonTextSize = function(t) return t.type[t.roles.button] end,
+	badgeTextSize = function(t) return t.type[t.roles.badge] end,
+	inputTextSize = function(t) return t.type[t.roles.input] end,
 
-------------------------------------------------------------------------------
--- Window
-------------------------------------------------------------------------------
-theme.windowSize = UDim2.fromOffset(797, 595)
-theme.topBarHeight = 60
--- Horizontal overflow of the top bar past the panel edge (gem-style accent).
-theme.topBarOverflow = 8
--- Window's content top padding is derived as `theme.padding +
--- theme.strokeThickness` at the Window render site so the relationship is
--- live (stroke change → top padding follows). Bottom/left/right just use
--- the base `theme.padding`.
+	padding = function(t) return t.space.lg end,
+	tightPadding = function(t) return t.space.sm end,
+	itemSpacing = function(t) return t.space.md end,
+	contentSpacing = function(t) return t.space.lg end,
 
-------------------------------------------------------------------------------
--- TextField
-------------------------------------------------------------------------------
-theme.textFieldSize = UDim2.fromOffset(300, 60)
+	idleScale = function(t) return t.motion.idleScale end,
+	hoverScale = function(t) return t.motion.hoverScale end,
+	pressScale = function(t) return t.motion.pressScale end,
+	hoverDuration = function(t) return t.motion.hoverDuration end,
+	pressDuration = function(t) return t.motion.pressDuration end,
+}
 
-------------------------------------------------------------------------------
--- GemBackground (noise texture tile)
-------------------------------------------------------------------------------
-theme.tileSize = UDim2.fromOffset(115, 115)
--- Badge ships a smaller tile so the noise reads at the badge's lower height.
-theme.badgeTileSize = UDim2.fromOffset(80, 80)
-
-------------------------------------------------------------------------------
--- Hover / press scale animation (useHoverScale defaults)
-------------------------------------------------------------------------------
-theme.idleScale = 1
-theme.hoverScale = 1.06
-theme.pressScale = 0.92
-theme.hoverDuration = 0.15
-theme.pressDuration = 0.08
-
-return theme
+return setmetatable(theme, {
+	__index = function(self, key: string): any
+		local resolve = legacy[key]
+		if resolve then
+			return resolve(self :: any)
+		end
+		return nil
+	end,
+})

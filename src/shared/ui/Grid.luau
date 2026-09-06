@@ -7,9 +7,14 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
+local SkinProvider = require(script.Parent.SkinProvider)
+local tokens = require(script.Parent.tokens)
 
 export type GridProps = {
 	cellSize: UDim2?,
+	-- Gap between cells. A `theme.space` step name applies to both axes; pass a
+	-- UDim2 only when the horizontal and vertical gaps genuinely differ.
+	gap: (string | number)?,
 	cellPadding: UDim2?,
 	fillDirection: Enum.FillDirection?,
 	fillDirectionMaxCells: number?,
@@ -26,10 +31,14 @@ export type GridProps = {
 }
 
 return function(props: GridProps)
+	local skin = SkinProvider.useSkin()
+	local space = skin.theme.space
+	local gap = tokens.resolveSpace(space, props.gap, space.md)
+
 	local children: { [string]: any } = {
 		Layout = React.createElement("UIGridLayout", {
 			CellSize = props.cellSize or UDim2.fromOffset(100, 100),
-			CellPadding = props.cellPadding or UDim2.fromOffset(8, 8),
+			CellPadding = props.cellPadding or UDim2.fromOffset(gap, gap),
 			FillDirection = props.fillDirection or Enum.FillDirection.Horizontal,
 			FillDirectionMaxCells = props.fillDirectionMaxCells or 0,
 			HorizontalAlignment = props.horizontalAlignment or Enum.HorizontalAlignment.Center,

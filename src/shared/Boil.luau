@@ -5,25 +5,25 @@
 -- A feature consumes the framework through here and nowhere else:
 --
 --   local Boil = require(ReplicatedStorage.Shared.Boil)
---   React.createElement(Boil.ui.Button, { variant = "red", text = "X" })
---   Boil.UIRegistry.registerScreen("Notes", element)
+--   React.createElement(Boil.ui.Button, { variant = "danger", text = "X" })
+--   Boil.Registry.define("Nav")
 --
 -- Why the indirection: features depend on this stable re-export, never on deep
--- framework paths (`Shared.ui.skins.gem`, `Shared.utils.LoadOrdered`, …). That
+-- framework paths (`Shared.ui.skins.gem`, `Shared.utils.FeatureLoader`, …). That
 -- lets the framework refactor its internals freely — only this surface has to
 -- stay stable — which is what makes "update the framework without touching the
 -- features" a version bump instead of a merge. Enforced both ways by
 -- tools/check-framework-boundary. See docs/game/framework-boundary.md.
 --
--- What belongs here: the framework's OWN modules (the UI kit, the load helpers,
+-- What belongs here: the framework's OWN modules (the UI kit, the loaders,
 -- the presentation registry, the replica hook, the audio system). What does NOT:
 -- third-party Wally packages (React, ByteNet, ReplicaService — features require
 -- those directly) and anything owned by a feature (PlayerData templates, Settings
 -- categories). The framework ships with zero features; this surface names none.
 --
 -- Members load lazily on first access and cache, so requiring Boil is cheap and
--- realm-safe: a server Service that only touches `Boil.LoadOrdered` never pulls in
--- the React UI kit behind `Boil.ui`.
+-- realm-safe: a server Service that only touches `Boil.FeatureLoader` never pulls
+-- in the React UI kit behind `Boil.ui`.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -32,7 +32,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- a deep framework path the boundary lint (rightly) rejects, so without this a
 -- skin package would have no way to name the shapes it implements. Cheap enough to
 -- be harmless — contract.luau pulls in `assets` (a leaf table of asset IDs) and
--- nothing else, so no React is loaded on a server that only wants LoadOrdered.
+-- nothing else, so no React is loaded on a server that only wants FeatureLoader.
 local contract = require(ReplicatedStorage.Shared.ui.contract)
 
 -- Skin-authoring types, re-exported so a skin can say `local skin: Boil.Skin = …`.
@@ -51,11 +51,17 @@ export type ScrollListProps = contract.ScrollListProps
 export type WindowProps = contract.WindowProps
 export type GemBackgroundProps = contract.GemBackgroundProps
 
+export type TypeRole = contract.TypeRole
+export type SpaceRole = contract.SpaceRole
+export type Theme = contract.Theme
+
 export type Boil = {
 	ui: typeof(require(ReplicatedStorage.Shared.ui)),
+	App: typeof(require(ReplicatedStorage.Shared.App)),
+	Registry: typeof(require(ReplicatedStorage.Shared.utils.Registry)),
 	audio: typeof(require(ReplicatedStorage.Shared.audio)),
 	Loader: typeof(require(ReplicatedStorage.Packages.Loader)),
-	LoadOrdered: typeof(require(ReplicatedStorage.Shared.utils.LoadOrdered)),
+	FeatureLoader: typeof(require(ReplicatedStorage.Shared.utils.FeatureLoader)),
 	UIRegistry: typeof(require(ReplicatedStorage.Shared.utils.UIRegistry)),
 	useReplica: typeof(require(ReplicatedStorage.Shared.utils.useReplica)),
 }
@@ -65,14 +71,20 @@ local loaders: { [string]: () -> any } = {
 	ui = function()
 		return require(ReplicatedStorage.Shared.ui)
 	end,
+	App = function()
+		return require(ReplicatedStorage.Shared.App)
+	end,
+	Registry = function()
+		return require(ReplicatedStorage.Shared.utils.Registry)
+	end,
 	audio = function()
 		return require(ReplicatedStorage.Shared.audio)
 	end,
 	Loader = function()
 		return require(ReplicatedStorage.Packages.Loader)
 	end,
-	LoadOrdered = function()
-		return require(ReplicatedStorage.Shared.utils.LoadOrdered)
+	FeatureLoader = function()
+		return require(ReplicatedStorage.Shared.utils.FeatureLoader)
 	end,
 	UIRegistry = function()
 		return require(ReplicatedStorage.Shared.utils.UIRegistry)

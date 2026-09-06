@@ -27,16 +27,16 @@ and nothing deeper:
 local Boil = require(ReplicatedStorage.Shared.Boil)
 
 React.createElement(Boil.ui.Button, { variant = "red", text = "X" })
-Boil.UIRegistry.registerScreen("Notes", element)
+Boil.Registry.define("Nav", script)
 local data = Boil.useReplica(...)
 ```
 
-`Boil` exposes `ui`, `audio`, `Loader`, `LoadOrdered`, `UIRegistry`, and
+`Boil` exposes `ui`, `audio`, `Loader`, `Registry`, `FeatureLoader`, `UIRegistry`, and
 `useReplica`, plus the skin-authoring **types** (`Boil.Skin`, `Boil.Components`,
 `Boil.ButtonProps`, …) — a skin package has to name the shapes it implements, and
 `Shared.ui.contract` is a deep path this rule forbids. Members load lazily on
 first access, so requiring `Boil` is cheap and
-realm-safe — a server Service that only touches `Boil.LoadOrdered` never pulls in
+realm-safe — a server Service that only touches `Boil.FeatureLoader` never pulls in
 the React UI kit behind `Boil.ui`. It deliberately does **not** export third-party
 Wally packages (React, ByteNet, ReplicaService — require those directly) or
 anything a feature owns. Because features bind to this surface instead of deep
@@ -54,7 +54,7 @@ into* the framework, not the other way around.
 - Touching the `Features` container generically is fine: iterating it,
   `LoadDescendants(Features, …)`, `Features:GetChildren()`. That names nobody.
 - Reaching a *named* child is a violation: `Features:WaitForChild("UIShell")`,
-  `require(ReplicatedStorage.Features.Notes)`, `Features.Settings`.
+  `require(ReplicatedStorage.Features.Settings)`, `Features.HUD`.
 
 `tools/check-framework-boundary` enforces the boundary **both ways**: it scans the
 runtime framework realms for any named-feature reference (this rule), *and* scans

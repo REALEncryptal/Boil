@@ -1,31 +1,65 @@
 --!strict
 -- Sidebar layout defaults. Override at the call site via props per item or
--- per Sidebar instance; bump these to change the framework-wide defaults.
+-- per Sidebar instance; bump these to change the game-wide defaults.
 --
--- Shared visual tokens (e.g. the label stroke thickness) come from
--- `Shared.ui.theme` so they track the rest of the gem-styled UI.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local theme = require(ReplicatedStorage.Shared.Boil).ui.theme
+-- The look is ported from the Miami HUD's quick-action group (uidev): a gem
+-- surface carrying the icon, with the label overlaid across its bottom edge and
+-- an optional marker straddling the top-right corner. The previous sidebar was
+-- bare art with a random hover tilt and no surface behind it.
+--
+-- Sizes are REFERENCE pixels (1280x720); the HUD mounts the sidebar inside a
+-- `ui.Surface` that scales them to the viewport.
+--
+-- Anything the design system already names is read from `theme` at render time
+-- rather than restated here. Only values genuinely specific to this widget stay
+-- as literals — and only the ones the type/space scales can't express.
 
 return {
-	-- SidebarItem square size (pixels). The whole item is one icon — the
-	-- label rides on top of it, anchored to the bottom edge.
-	DEFAULT_ICON_SIZE = 72,
-	-- Label TextSize (pixels).
-	DEFAULT_LABEL_SIZE = 26,
-	-- Miter UIStroke thickness on the label. Matches the gem text outline
-	-- minus the offset shadow layer — readable on top of any icon.
-	LABEL_STROKE_THICKNESS = theme.thinStrokeThickness,
-	-- Distance (pixels) from the bottom edge of the icon to the baseline of
-	-- the label. Keeps the label inside the icon's visual bounds.
-	LABEL_BOTTOM_INSET = 6,
-	-- Rotation tilt picked at random on hover-enter (degrees). Magnitude
-	-- comes from [MIN, MAX]; sign is 50/50. Set MAX = 0 to disable.
-	HOVER_TILT_MIN_DEG = 4,
-	HOVER_TILT_MAX_DEG = 12,
-	-- Vertical gap between sibling SidebarItems in the column (pixels).
-	ITEM_SPACING = 12,
-	-- Default outer Sidebar padding on each side (pixels).
-	PADDING = 12,
+	-- The item's square, in reference pixels. THE knob for the whole entry's size:
+	-- the label box, the badge and its corner nudge are all fractions of this, so
+	-- changing it scales the button as one piece rather than leaving the badge
+	-- oversized and the label stranded.
+	DEFAULT_ICON_SIZE = 96,
+
+	-- Icon inset inside the surface. Runs bigger than the skin default so the art
+	-- fills the gem rather than floating in the middle of it.
+	ICON_SCALE = 0.86,
+
+	-- The label sits INSIDE the button, not under it, so the skin's hover growth
+	-- scales the icon and its label as one piece.
+	--
+	-- Its box runs wider than the button so a long word ("Inventory") scales up to
+	-- the same glyph size as a short one instead of being squeezed by the box.
+	LABEL_WIDTH_SCALE = 1.25,
+	-- The label's box height, as a fraction of the button's square. Under a
+	-- scale-to-fit skin this is what actually sets the glyph size — the type role
+	-- below only caps it — so it's the knob to turn for bigger or smaller text.
+	LABEL_HEIGHT_SCALE = 0.34,
+	-- Type role for the label. Sets the ceiling under a scale-to-fit skin, so it
+	-- has to sit above the height above or it clamps the text back down.
+	LABEL_ROLE = "title",
+	-- Lifts the label off the button's bottom edge. Small, so the label sits low
+	-- on the surface the way the reference HUD has it.
+	LABEL_LIFT = 4,
+
+	-- Notification marker straddling the top-right corner, nudged back inside the
+	-- surface on both axes so it overlaps the corner rather than floating off it.
+	--
+	-- Both are fractions of the item's square, not fixed pixels — a fixed 44px
+	-- marker on a 96px button reads as a different design from the same marker on
+	-- a 128px one.
+	BADGE_SCALE = 0.34,
+	BADGE_NUDGE_SCALE = 0.09,
+	BADGE_ROLE = "label",
+	-- Palette for the marker when an entry doesn't name one. Semantic, so the
+	-- skin picks the paint.
+	BADGE_VARIANT = "danger",
+
+	-- Variant for an entry that doesn't name one.
+	DEFAULT_VARIANT = "primary",
+
+	-- Vertical gap between sibling items, as a space step.
+	ITEM_SPACING = "lg",
+	-- Outer padding on each side, as a space step.
+	PADDING_STEP = "md",
 }

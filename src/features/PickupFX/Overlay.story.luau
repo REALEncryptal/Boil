@@ -13,7 +13,7 @@ local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local UILabs = require(ReplicatedStorage.Packages.UILabs)
+local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local PickupFX = require(ReplicatedStorage.Features.PickupFX)
 local ui = require(ReplicatedStorage.Shared.Boil).ui
 

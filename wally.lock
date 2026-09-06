@@ -115,7 +115,7 @@ dependencies = []
 [[package]]
 name = "realencryptal/boil"
 version = "0.1.0"
-dependencies = [["ByteNet", "ffrostflame/bytenet@0.4.6"], ["Cmdr", "evaera/cmdr@1.12.0"], ["Loader", "sleitnick/loader@2.0.0"], ["React", "jsdotlua/react@17.2.1"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReplicaService", "brittonfischer/replicaservice@0.1.0"], ["Signal", "sleitnick/signal@2.0.3"], ["Trove", "sleitnick/trove@1.8.0"], ["UILabs", "pepeeltoro41/ui-labs@2.4.2"], ["ProfileStore", "lm-loleris/profilestore@1.0.3"]]
+dependencies = [["ByteNet", "ffrostflame/bytenet@0.4.6"], ["Cmdr", "evaera/cmdr@1.12.0"], ["Loader", "sleitnick/loader@2.0.0"], ["React", "jsdotlua/react@17.2.1"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReplicaService", "brittonfischer/replicaservice@0.1.0"], ["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "lm-loleris/profilestore@1.0.3"], ["UILabs", "pepeeltoro41/ui-labs@2.4.2"]]
 
 [[package]]
 name = "sleitnick/loader"
@@ -125,9 +125,4 @@ dependencies = []
 [[package]]
 name = "sleitnick/signal"
 version = "2.0.3"
-dependencies = []
-
-[[package]]
-name = "sleitnick/trove"
-version = "1.8.0"
 dependencies = []

@@ -14,6 +14,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local Assets = require(script.Parent.assets)
 local theme = require(script.Parent.theme)
+local tokens = require(script.Parent.tokens)
+local useViewport = require(script.Parent.useViewport)
 local useHoverScale = require(script.Parent.useHoverScale)
 local useTweenedScale = require(script.Parent.useTweenedScale)
 
@@ -25,8 +27,8 @@ local CHECK_OUT_TWEEN = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDi
 type Props = {
 	checked: boolean,
 	onToggle: ((next: boolean) -> ())?,
-	-- Variant used to paint the check fill/glow (defaults to "white").
-	variant: Assets.VariantKey?,
+	-- Variant used to paint the check fill/glow (defaults to "secondary").
+	variant: string?,
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
@@ -34,20 +36,21 @@ type Props = {
 	zIndex: number?,
 	transparency: number?,
 	strokeThickness: number?,
-	padding: number?,
+	-- A `theme.space` step name, or reference pixels.
+	padding: (string | number)?,
 }
 
 local WHITE = Color3.fromRGB(255, 255, 255)
-local DEFAULT_SIZE = UDim2.fromOffset(40, 40)
-local DEFAULT_PADDING = 5
 
 return function(props: Props)
-	local variantKey = props.variant or "white"
+	local variantKey = theme.resolveVariant(props.variant or "secondary")
 	local variant = Assets.Variants[variantKey] or Assets.Variants.white
-	local padding = props.padding or DEFAULT_PADDING
+	local padding = tokens.resolveSpace(theme.space, props.padding, theme.space.xs)
 	local strokeThickness = props.strokeThickness or theme.strokeThickness
 
 	local hover = useHoverScale()
+	-- Reference-space floor that renders to the real-pixel minimum tap target.
+	local touchMin = tokens.minTouchReference(useViewport.useScale())
 
 	-- Pop the check on toggle: scale the inner Check frame from 0 → 1 (in) or
 	-- 1 → 0 (out). The UIScale's initial `Scale = 0` means an already-checked
@@ -58,6 +61,13 @@ return function(props: Props)
 	})
 
 	local children: { [string]: any } = {
+		-- A checkbox is a tap target, so it never renders below finger size.
+		MinSize = React.createElement("UISizeConstraint", {
+			-- Reference-space floor that renders to the real-pixel minimum at this
+			-- viewport's scale. See tokens.minTouchTarget.
+			MinSize = Vector2.new(touchMin, touchMin),
+		}),
+
 		UIScale = React.createElement("UIScale", {
 			Scale = 1,
 			ref = hover.scaleRef,
@@ -77,30 +87,28 @@ return function(props: Props)
 
 		UIAspectRatioConstraint = React.createElement("UIAspectRatioConstraint", {}),
 
-		Trigger = React.createElement("TextButton", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = WHITE,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Text = "",
-			TextColor3 = Color3.fromRGB(0, 0, 0),
-			TextSize = 14,
-			FontFace = Font.new(
-				"rbxasset://fonts/families/SourceSansPro.json",
-				Enum.FontWeight.Regular,
-				Enum.FontStyle.Normal
-			),
-			ZIndex = 10,
-			[React.Event.MouseEnter] = hover.onEnter,
-			[React.Event.MouseLeave] = hover.onLeave,
-			[React.Event.MouseButton1Down] = hover.onPress,
-			[React.Event.MouseButton1Up] = hover.onRelease,
-			[React.Event.Activated] = function()
-				if props.onToggle then
-					props.onToggle(not props.checked)
+		Trigger = React.createElement(
+			"TextButton",
+			(function()
+				local trigger: { [any]: any } = {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Text = "",
+					AutoButtonColor = false,
+					ZIndex = 10,
+				}
+				local onToggle = function()
+					if props.onToggle then
+						props.onToggle(not props.checked)
+					end
 				end
-			end,
-		}),
+				for key, value in hover.events(onToggle) do
+					trigger[key] = value
+				end
+				return trigger
+			end)()
+		),
 	}
 
 	-- Always mount the Check frame; visibility is driven by its UIScale
@@ -139,7 +147,7 @@ return function(props: Props)
 	})
 
 	return React.createElement("Frame", {
-		Size = props.size or DEFAULT_SIZE,
+		Size = props.size or UDim2.fromOffset(theme.checkboxSize, theme.checkboxSize),
 		Position = props.position or UDim2.fromScale(0.5, 0.5),
 		AnchorPoint = props.anchorPoint or Vector2.new(0.5, 0.5),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),

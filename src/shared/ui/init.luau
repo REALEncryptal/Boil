@@ -16,9 +16,21 @@
 -- installed under src/skins/ (`ui.skins.names()`). Wrap a subtree to swap:
 --   React.createElement(ui.SkinProvider, { skin = "flat" }, children)
 --
--- `ui.theme` exposes the default (gem) token table — the single source of design
--- tokens the UI Labs Theme story tunes live. For skin-aware token reads inside a
--- component, use `ui.useSkin().theme`.
+-- `ui.theme` exposes the default (gem) token table. For skin-aware token reads
+-- inside a component, use `ui.useSkin().theme` — that is the correct one in a
+-- subtree that swapped skins.
+--
+-- Sizes are named, not numbered. `ui.tokens` holds the two scales every skin
+-- speaks: `theme.type.<display|title|heading|body|label|caption>` and
+-- `theme.space.<xs|sm|md|lg|xl|xxl>`. Call sites pass roles — `role = "body"`,
+-- `gap = "md"` — so a screen re-pitches from one edit instead of a hunt through
+-- literals.
+--
+-- Everything is authored in REFERENCE pixels (1280x720) and scaled to the real
+-- viewport by `ui.Surface`, which mounts the one UIScale that does it. Wrap a
+-- feature UI in a Surface and it is correct on a phone and a 4K monitor with no
+-- breakpoint. `ui.useViewport` / `useScale` / `useDevice` are there for the
+-- cases where the layout has to *change* rather than just shrink.
 --
 -- Text and GemBackground are exported (also skin-resolved) so features can
 -- compose new surfaces without rebuilding the visual stack from scratch.
@@ -51,6 +63,7 @@ ui.contract = require(script.contract)
 -- Tokens + asset registry.
 ui.assets = require(script.assets)
 ui.theme = require(script.theme)
+ui.tokens = require(script.tokens)
 
 -- Semantic primitives (skin-resolved).
 ui.Button = semantic("Button")
@@ -64,6 +77,19 @@ ui.ScrollList = semantic("ScrollList")
 ui.Window = semantic("Window")
 ui.Text = semantic("Text")
 ui.GemBackground = semantic("GemBackground")
+
+-- Responsive seam (seam #5): Surface mounts the viewport UIScale, so a feature
+-- authored once at the reference resolution is correct on every device. The
+-- hooks expose the raw numbers for the rarer case where a layout has to *change*
+-- rather than just shrink.
+ui.Surface = require(script.Surface)
+-- Fixed art, deliberately NOT skin-resolved — see CloseButton.luau.
+ui.CloseButton = require(script.CloseButton)
+ui.viewport = require(script.viewport)
+ui.ViewportProvider = require(script.useViewport).ViewportProvider
+ui.useViewport = require(script.useViewport).useViewport
+ui.useScale = require(script.useViewport).useScale
+ui.useDevice = require(script.useViewport).useDevice
 
 -- Layout primitives (seam #2): transparent, structure-only. Not skin-resolved —
 -- they have no visuals, just UI*Layout / padding / sizing. Compose screens with

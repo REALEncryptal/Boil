@@ -2,10 +2,16 @@
 -- Client-side UI registries that let presentations register *themselves* into
 -- the root client tree, so src/client/init.client.luau names no content feature.
 --
---   * Roots   — always-mounted top-level elements (the HUD host, the Health
---               widget). Keyed by name so React has a stable key.
---   * Screens — HUD window contents keyed by a UIShell frame id; the HUD reads
---               these to fill its window slots.
+--   * Roots     — always-mounted top-level elements (a HUD host, a persistent
+--                 widget). Keyed by name so React has a stable key.
+--   * Providers — React context providers wrapped around the whole tree.
+--
+-- Window CONTENT is not here. It used to be ("screens", keyed by frame id), but
+-- the registry had no idea which ids were real, so a screen registered under an
+-- id no sidebar entry claimed was silently dropped. That belongs to whichever
+-- feature owns navigation — see the HUD feature's `setScreen`, which validates
+-- against its own nav registry — not to the framework, which must not know that
+-- navigation exists at all.
 --
 -- A feature opts in by dropping a `*Presentation.client.luau` that registers
 -- here at load. init.client.luau discovers + requires those modules BEFORE the
@@ -15,7 +21,6 @@
 -- are client-realm) and the HUD reads it on the client — one shared instance.
 
 local roots: { [string]: any } = {}
-local screens: { [string]: any } = {}
 local providers: { any } = {}
 
 local UIRegistry = {}
@@ -33,20 +38,6 @@ end
 -- Frame. Returns a copy so callers can't mutate the registry.
 function UIRegistry.getRoots(): { [string]: any }
 	return table.clone(roots)
-end
-
--- Register window content for a UIShell frame id. The HUD mounts this inside the
--- matching window; ids without an entry fall back to placeholder rows.
-function UIRegistry.registerScreen(frameId: string, element: any)
-	if screens[frameId] ~= nil then
-		warn(`[UIRegistry] screen "{frameId}" registered twice; overwriting`)
-	end
-	screens[frameId] = element
-end
-
--- The map of frameId → element the HUD reads to fill its window slots.
-function UIRegistry.getScreens(): { [string]: any }
-	return table.clone(screens)
 end
 
 -- Register a top-level React provider component to wrap the whole client tree

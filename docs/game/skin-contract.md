@@ -7,11 +7,15 @@ the four (skin / layout / view / presentation).
 ## The three pieces
 
 1. **`src/shared/ui/contract.luau`** — the typed prop shapes every primitive
-   speaks (`ButtonProps`, `WindowProps`, `ScrollListProps`, …), plus the `Skin`
-   and `Components` types. This is the keystone: it's shape-only — it says nothing
-   about colors, strokes, or spacing. Structural insertion points are **named slot
+   speaks (`ButtonProps`, `WindowProps`, `ScrollListProps`, …), plus the `Skin`,
+   `Theme` and `Components` types. Structural insertion points are **named slot
    props** (`children` maps keyed by name) so every skin agrees on where caller
    content goes.
+
+   Since **contract v2** it also fixes two *scales* — see
+   [Tokens are part of the contract](#tokens-are-part-of-the-contract). It is no
+   longer shape-only, because shape-only turned out to be the reason a call site
+   could never portably ask for "a body-size label".
 
 2. **`src/shared/ui/SkinProvider.luau`** — a React context holding the active
    skin. `useSkin()` returns it, falling back to the **gem** skin when no provider
@@ -101,3 +105,77 @@ skin now renders the wrong thing.
 The gem skin is the reference for the polished path; the flat skin (`skins/flat/`)
 is the minimal reference — read it first when building a new skin, it's the
 smallest complete implementation of the contract.
+
+
+## Tokens are part of the contract
+
+`contract.VERSION` is **2**. The change: every skin's `theme` must expose two
+scales with fixed keys.
+
+```lua
+theme.type  = { display, title, heading, body, label, caption }  -- numbers
+theme.space = { xs, sm, md, lg, xl, xxl }                        -- numbers
+theme.resolveVariant = function(key: string?): string
+```
+
+A skin may retune the **values** — flat's `body` is 20 where gem's is 22 — but not
+the **keys**, because call sites depend on them:
+
+```lua
+React.createElement(ui.Text, { text = "Rebirth", role = "title" })
+React.createElement(ui.Stack, { gap = "md", padding = "lg" })
+```
+
+### Why this had to change
+
+v1 said tokens lived under each skin and the contract said nothing about them.
+The consequence was that gem declared `textSizeXL … textSizeXS` and flat declared
+`textSize` and `titleTextSize` and nothing else. `theme.textSizeRegular` was
+simply `nil` on flat, so any call site reading it broke the moment you swapped
+skins — and since no shared vocabulary existed, features typed literal numbers
+instead. Ten of them at the top of `SettingsUI.ui.luau` alone, in no theme at all,
+which is why that screen never matched the rest of the UI and never moved when
+the theme did.
+
+Swapping skins now changes typography as well as surfaces, which is what a skin
+seam was supposed to mean.
+
+`tools/check-skins` verifies both scales and `resolveVariant`, reading the
+required key lists out of the contract so the lint and the runtime can't disagree.
+
+### Sizes are reference pixels
+
+Every number in a theme is authored against 1280×720 and scaled at render by
+`ui.Surface`. See [responsive.md](responsive.md).
+
+## Variants are semantic
+
+`variant` names what a control **means**, not what colour it is:
+
+```
+primary | secondary | danger | success | warning | neutral | special
+```
+
+Each skin maps those onto its own palette through `theme.resolveVariant` — gem to
+a gradient, flat to an accent colour.
+
+`VariantKey` is an **open string**, not a closed union. Skins are installable, so
+a skin must be able to offer a variant the framework never shipped; an unknown
+name falls back to the skin's default rather than erroring. The seven legacy
+colour names (`red`, `blue`, …) still resolve, so older call sites keep working.
+
+The old scheme spelled a confirm button `"green"`. That made the seam a lie: a
+skin could not reinterpret intent, and the closed union meant an installed skin
+could not add a variant even though the skin *set* was open.
+
+## Adding a component to the contract
+
+1. Add the prop type and the `Components` key in `contract.luau`.
+2. Implement it in gem (`src/shared/ui/<Name>.luau`) and flat.
+3. Export it from `src/shared/ui/init.luau` via `semantic("<Name>")`.
+4. Ship a `<Name>.story.luau` — `tools/check-ui` requires one.
+5. Run `lune run tools/check-skins`.
+
+Adding a key is a **minor** change: skins that predate it fall back to gem's
+implementation per key (`skins.resolve`), degraded but not broken. Changing an
+existing prop shape, or the token scales, is **major** — bump `VERSION`.

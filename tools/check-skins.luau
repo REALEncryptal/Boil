@@ -17,6 +17,13 @@
 --
 -- Installed skins are additionally checked for a boil.toml declaring a `contract`
 -- range that covers the current contract.VERSION. See docs/registry.md.
+--
+-- Since contract v2 a skin also owes TOKENS, not just components: the six `type`
+-- roles and the six `space` steps, plus `resolveVariant`. Call sites name those
+-- ("role = body", "gap = md") rather than typing numbers, so a skin missing one
+-- renders a nil size — which is exactly the class of breakage the shape-only
+-- contract used to allow. The keys are read out of the contract so this lint and
+-- the runtime never disagree about the list.
 
 local fs = require("@lune/fs")
 local process = require("@lune/process")
@@ -56,6 +63,97 @@ local function contractKeys(): ({ string }, number)
 	local version = tonumber(string.match(src, "VERSION%s*=%s*(%d+)"))
 	assert(version, `[check-skins] could not find VERSION in {CONTRACT}`)
 	return keys, version
+end
+
+-- The token keys every skin owes, read out of the contract's REQUIRED_* lists.
+local function contractTokenKeys(): ({ string }, { string })
+	local src = fs.readFile(CONTRACT)
+
+	local function list(name: string): { string }
+		-- Concatenated rather than interpolated: the pattern contains braces, and
+		-- a backtick string would read those as interpolation holes.
+		local block = string.match(src, "local " .. name .. "%s*=%s*{(.-)}")
+		assert(block, `[check-skins] could not find {name} in {CONTRACT}`)
+		local out: { string } = {}
+		for key in string.gmatch(block, '"([%w_]+)"') do
+			table.insert(out, key)
+		end
+		return out
+	end
+
+	return list("REQUIRED_TYPE_KEYS"), list("REQUIRED_SPACE_KEYS")
+end
+
+-- A skin's theme module: `<skin dir>/theme.luau` for a folder skin, and the
+-- shared `theme.luau` for the single-file gem skin (which re-exports it).
+local function themeSource(skin: Skin): (string?, string?)
+	local candidates = {}
+	if skin.dir then
+		table.insert(candidates, `{skin.dir}/theme.luau`)
+	end
+	-- `theme = require(ui.theme)` — a single-file skin pointing at the shared one.
+	if string.match(skin.source, "theme%s*=%s*require%b()") then
+		table.insert(candidates, "src/shared/ui/theme.luau")
+	end
+	for _, path in candidates do
+		if fs.isFile(path) then
+			return fs.readFile(path), path
+		end
+	end
+	return nil, nil
+end
+
+-- `theme.type = {` / `theme.space = {` bodies, so a missing role is named rather
+-- than reported as "no scale".
+local function scaleKeys(source: string, field: string): { [string]: boolean }
+	local found: { [string]: boolean } = {}
+	-- %b{} matches the balanced table body, so the pattern needs no newline
+	-- literal and doesn't care how the table is formatted.
+	local block = string.match(source, "theme%." .. field .. "%s*=%s*(%b{})")
+	if not block then
+		-- `theme.<field> = table.clone(tokens.<field>)` inherits the canonical
+		-- set wholesale, so read the keys out of tokens.luau instead.
+		if not string.match(source, "theme%." .. field .. "%s*=%s*table%.clone") then
+			return found
+		end
+		local canonical = fs.readFile("src/shared/ui/tokens.luau")
+		block = string.match(canonical, "tokens%." .. field .. "%s*=%s*(%b{})")
+		if not block then
+			return found
+		end
+	end
+	for key in string.gmatch(block, "([%w_]+)%s*=") do
+		found[key] = true
+	end
+	return found
+end
+
+local function checkTokens(skin: Skin, typeKeys: { string }, spaceKeys: { string })
+	local source, path = themeSource(skin)
+	if not source then
+		fail(skin.label, "could not locate a theme.luau — a skin must expose a token table")
+		return
+	end
+
+	for field, required in { type = typeKeys, space = spaceKeys } do
+		local found = scaleKeys(source, field)
+		local missing: { string } = {}
+		for _, key in required do
+			if not found[key] then
+				table.insert(missing, key)
+			end
+		end
+		if #missing > 0 then
+			fail(
+				skin.label,
+				`{path} is missing theme.{field}: ` .. table.concat(missing, ", ") .. " (contract v2 requires all of them)"
+			)
+		end
+	end
+
+	if not string.match(source, "function theme%.resolveVariant") then
+		fail(skin.label, `{path} has no theme.resolveVariant(key) — semantic variants can't be mapped without it`)
+	end
 end
 
 -- The keys a skin actually implements, read out of its `components = { … }` table.
@@ -144,6 +242,7 @@ local function checkManifest(skin: Skin, contractVersion: number)
 end
 
 local keys, contractVersion = contractKeys()
+local typeKeys, spaceKeys = contractTokenKeys()
 local skins = collect()
 
 for _, skin in skins do
@@ -167,6 +266,8 @@ for _, skin in skins do
 		fail(skin.label, `{skin.path} has no \`name\` field — the registry keys skins by it`)
 	end
 
+	checkTokens(skin, typeKeys, spaceKeys)
+
 	if skin.installed then
 		checkManifest(skin, contractVersion)
 	end
@@ -178,4 +279,7 @@ if problems > 0 then
 	process.exit(1)
 end
 
-print(`[check-skins] ok — {#skins} skin(s), all {#keys} contract key(s) implemented (contract v{contractVersion}).`)
+print(
+	`[check-skins] ok — {#skins} skin(s), all {#keys} component key(s) and `
+		.. `{#typeKeys + #spaceKeys} token(s) present (contract v{contractVersion}).`
+)

@@ -11,6 +11,17 @@
 -- (color shifts, glow toggles, etc.) off the same state machine. For purely
 -- programmatic animations with no pointer trigger, use useTweenedScale directly.
 --
+-- Touch: on a touch device the hook does NOT bind hover at all, and `events`
+-- omits MouseEnter/MouseLeave. Roblox fires those inconsistently for a finger
+-- (enter on touch-down, leave sometimes never), which is what used to leave a
+-- button stuck in its hovered state after a tap. Touch gets press feedback only,
+-- plus an InputEnded guard so a finger dragged off the control still releases.
+--
+-- Wire a control by spreading `events` rather than naming the four handlers:
+--
+--   local hover = useHoverScale()
+--   React.createElement("TextButton", merge({ … }, hover.events(onClick)))
+--
 -- Audio feedback: by default the hook plays a `hoverIn` SFX on enter, a
 -- `hoverOut` SFX on leave, and a `click` SFX on press (`triggerKind = "button"`
 -- only). Override `sounds` to swap individual cues, or pass `sounds = false`
@@ -23,6 +34,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local audio = require(ReplicatedStorage.Shared.audio)
 local theme = require(script.Parent.theme)
 local useTweenedScale = require(script.Parent.useTweenedScale)
+local useViewport = require(script.Parent.useViewport)
 
 export type TriggerKind = "button" | "hover"
 
@@ -58,6 +70,9 @@ export type Handle = {
 	onLeave: () -> (),
 	onPress: () -> (),
 	onRelease: () -> (),
+	-- Ready-to-spread React event map for a GuiButton. Pass the click handler;
+	-- pass `disabled = true` to get an empty map (no feedback, no click).
+	events: (onClick: (() -> ())?, disabled: boolean?) -> { [any]: any },
 }
 
 local function useHoverScale(options: Options?): Handle
@@ -87,6 +102,8 @@ local function useHoverScale(options: Options?): Handle
 		if s.press ~= nil then pressSound = s.press end
 	end
 
+	local isTouch = useViewport.useViewport().isTouch
+
 	local hovered, setHovered = React.useState(false)
 	local pressed, setPressed = React.useState(false)
 
@@ -97,35 +114,69 @@ local function useHoverScale(options: Options?): Handle
 
 	local noop = function() end
 
+	local onEnter = function()
+		setHovered(true)
+		if hoverInSound then
+			audio.playUI(hoverInSound)
+		end
+	end
+
+	-- Clear pressed too: a drag-off shouldn't leave the element stuck small.
+	local onLeave = function()
+		setHovered(false)
+		if pressEnabled then
+			setPressed(false)
+		end
+		if hoverOutSound then
+			audio.playUI(hoverOutSound)
+		end
+	end
+
+	local onPress = if pressEnabled
+		then function()
+			setPressed(true)
+			if pressSound then
+				audio.playUI(pressSound)
+			end
+		end
+		else noop
+
+	local onRelease = if pressEnabled then function() setPressed(false) end else noop
+
+	local function events(onClick: (() -> ())?, disabled: boolean?): { [any]: any }
+		if disabled then
+			return {}
+		end
+		local map: { [any]: any } = {
+			[React.Event.Activated] = onClick,
+			[React.Event.MouseButton1Down] = onPress,
+			[React.Event.MouseButton1Up] = onRelease,
+		}
+		if isTouch then
+			-- A finger lifted off the edge of the control never fires
+			-- MouseButton1Up, so release on the raw input end as well.
+			map[React.Event.InputEnded] = function(_, input: InputObject)
+				if input.UserInputType == Enum.UserInputType.Touch then
+					onRelease()
+				end
+			end
+			return map
+		end
+		map[React.Event.MouseEnter] = onEnter
+		map[React.Event.MouseLeave] = onLeave
+		return map
+	end
+
 	return {
+		events = events,
 		scaleRef = scaleRef,
 		isHovered = hovered,
 		isPressed = pressed,
-		onEnter = function()
-			setHovered(true)
-			if hoverInSound then
-				audio.playUI(hoverInSound)
-			end
-		end,
-		-- Clear pressed too: a drag-off shouldn't leave the element stuck small.
-		onLeave = function()
-			setHovered(false)
-			if pressEnabled then
-				setPressed(false)
-			end
-			if hoverOutSound then
-				audio.playUI(hoverOutSound)
-			end
-		end,
-		onPress = if pressEnabled
-			then function()
-				setPressed(true)
-				if pressSound then
-					audio.playUI(pressSound)
-				end
-			end
-			else noop,
-		onRelease = if pressEnabled then function() setPressed(false) end else noop,
+		-- Kept for call sites that wire handlers individually; `events` is preferred.
+		onEnter = if isTouch then noop else onEnter,
+		onLeave = if isTouch then noop else onLeave,
+		onPress = onPress,
+		onRelease = onRelease,
 	}
 end
 

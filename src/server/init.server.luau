@@ -2,16 +2,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Loader = require(ReplicatedStorage.Packages.Loader)
-local LoadOrdered = require(ReplicatedStorage.Shared.utils.LoadOrdered)
+local FeatureLoader = require(ReplicatedStorage.Shared.utils.FeatureLoader)
 
+local SharedFeatures = ReplicatedStorage:WaitForChild("Features")
 local ServerFeatures = ServerScriptService:WaitForChild("Features")
 
--- Only load modules whose name ends in "Service" — skips anything else
--- that might happen to live under a feature folder.
-local modules = Loader.LoadDescendants(ServerFeatures, Loader.MatchesName("Service$"))
-Loader.SpawnAll(LoadOrdered(modules), "Start")
+-- Report anything a feature declared in its boil.toml and didn't get, before the
+-- first require fails on it. One warning naming the feature and the missing
+-- dependency beats a raw require error from inside someone else's module.
+FeatureLoader.verify(SharedFeatures)
 
--- Discover server-realm presentations (e.g. Cmdr commands) — required for their
--- side effect (they self-register). No Start lifecycle; a feature adds a command
--- by dropping a *Command.server.luau, with no edit here.
+-- Services, in dependency order: features are topologically sorted by their
+-- manifests, and each feature's own `Priority` orders its services among
+-- themselves. The manifests live in the shared tree, so that's where the graph is
+-- read from even though the modules are server-realm.
+local services = FeatureLoader.load(ServerFeatures, "Service$", SharedFeatures)
+Loader.SpawnAll(services, "Start")
+
+-- Server-realm presentations (Cmdr commands). Required for their side effect —
+-- they self-register, so a feature adds a command by dropping a
+-- *Command.server.luau with no edit here.
 Loader.LoadDescendants(ServerFeatures, Loader.MatchesName("Command$"))

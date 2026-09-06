@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local contract = require(ReplicatedStorage.Shared.ui.contract)
+local tokens = require(ReplicatedStorage.Shared.ui.tokens)
 local useHoverScale = require(ReplicatedStorage.Shared.ui.useHoverScale)
 local theme = require(script.Parent.theme)
 
@@ -26,6 +27,9 @@ return function(props: contract.ButtonProps)
 		LayoutOrder = props.layoutOrder,
 		ZIndex = props.zIndex or 2,
 	}, {
+		MinSize = React.createElement("UISizeConstraint", {
+			MinSize = Vector2.new(tokens.minTouchTarget, tokens.minTouchTarget),
+		}),
 		UIScale = React.createElement("UIScale", { Scale = 1, ref = hover.scaleRef }),
 		UICorner = React.createElement("UICorner", { CornerRadius = theme.cornerRadius }),
 		UIStroke = React.createElement("UIStroke", { Thickness = theme.strokeThickness, Color = accent }),
@@ -35,7 +39,9 @@ return function(props: contract.ButtonProps)
 			BackgroundTransparency = 1,
 			Text = props.text or "",
 			TextColor3 = theme.textColor,
-			TextSize = props.textSize or theme.textSize,
+			TextSize = props.textSize
+				or tokens.resolveType(theme.type, props.role or theme.roles.button, theme.type.body),
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			FontFace = Font.new(
 				"rbxasset://fonts/families/SourceSansPro.json",
 				props.textWeight or Enum.FontWeight.Bold
@@ -43,17 +49,22 @@ return function(props: contract.ButtonProps)
 			ZIndex = 2,
 		}),
 
-		Trigger = React.createElement("TextButton", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Text = "",
-			ZIndex = 10,
-			[React.Event.MouseEnter] = if disabled then nil else hover.onEnter,
-			[React.Event.MouseLeave] = if disabled then nil else hover.onLeave,
-			[React.Event.MouseButton1Down] = if disabled then nil else hover.onPress,
-			[React.Event.MouseButton1Up] = if disabled then nil else hover.onRelease,
-			[React.Event.Activated] = if disabled then nil else props.onClick,
-		}),
+		Trigger = React.createElement(
+			"TextButton",
+			(function()
+				local trigger: { [any]: any } = {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Text = "",
+					AutoButtonColor = false,
+					ZIndex = 10,
+				}
+				for key, value in hover.events(props.onClick, disabled) do
+					trigger[key] = value
+				end
+				return trigger
+			end)()
+		),
 
 		DisabledOverlay = if disabled
 			then React.createElement("Frame", {

@@ -16,9 +16,12 @@ local React = require(ReplicatedStorage.Packages.React)
 local Assets = require(script.Parent.assets)
 local GemBackground = require(script.Parent.GemBackground)
 local theme = require(script.Parent.theme)
+local tokens = require(script.Parent.tokens)
 
 type Props = {
 	size: UDim2?,
+	-- Inner inset on all sides. A `theme.space` step name, or reference pixels.
+	padding: (string | number)?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
 	layoutOrder: number?,
@@ -27,19 +30,37 @@ type Props = {
 	transparency: number?,
 	strokeThickness: number?,
 	-- Gem mode. When set, the surface paints the gem stud background instead.
-	variant: Assets.VariantKey?,
+	variant: string?,
 	hasShine: boolean?,
 	tileSize: UDim2?,
 	children: { [string]: any }?,
 }
 
 return function(props: Props)
-	if props.variant then
-		local variant = Assets.Variants[props.variant] or Assets.Variants.red
-		local fillRotation = if props.variant == "rainbow" then 0 else 90
-		local glowRotation = if props.variant == "rainbow" then 0 else 90
+	-- Nil unless the caller asked for an inset, so a Panel stays a bare surface by
+	-- default and only pays for padding when it wants it.
+	local padding = if props.padding ~= nil
+		then tokens.resolveSpace(theme.space, props.padding, 0)
+		else nil
 
-		local content: { [string]: any } = {}
+	local function paddingElement()
+		if padding == nil then
+			return nil
+		end
+		return React.createElement("UIPadding", {
+			PaddingTop = UDim.new(0, padding),
+			PaddingBottom = UDim.new(0, padding),
+			PaddingLeft = UDim.new(0, padding),
+			PaddingRight = UDim.new(0, padding),
+		})
+	end
+
+	if props.variant then
+		local variantKey = theme.resolveVariant(props.variant)
+		local variant = Assets.Variants[variantKey] or Assets.Variants.blue
+		local rotation = if variantKey == "rainbow" then 0 else 90
+
+		local content: { [string]: any } = { UIPadding = paddingElement() }
 		if props.children then
 			for k, v in pairs(props.children) do
 				content[k] = v
@@ -59,8 +80,8 @@ return function(props: Props)
 			BackgroundDeco = React.createElement(GemBackground, {
 				fillGradient = variant.fill,
 				glowGradient = variant.glow,
-				fillRotation = fillRotation,
-				glowRotation = glowRotation,
+				fillRotation = rotation,
+				glowRotation = rotation,
 				tileSize = props.tileSize,
 				hasShine = if props.hasShine == nil then false else props.hasShine,
 			}),
@@ -75,6 +96,7 @@ return function(props: Props)
 	end
 
 	local children: { [string]: any } = {
+		UIPadding = paddingElement(),
 		UIStroke = React.createElement("UIStroke", {
 			Thickness = props.strokeThickness or theme.strokeThickness,
 			LineJoinMode = Enum.LineJoinMode.Miter,

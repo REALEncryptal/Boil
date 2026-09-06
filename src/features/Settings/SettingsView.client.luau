@@ -4,7 +4,7 @@
 --   • SettingsController.LinkRequested for transient row highlights
 --
 -- The HUD mounts this from the client entry script (`client/init.client.luau`)
--- and passes it to UIShowcase.HUD's frameContents so the Settings sidebar
+-- and passes it to the HUD's frameContents so the Settings sidebar
 -- entry opens a real settings panel instead of placeholder rows.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

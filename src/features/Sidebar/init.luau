@@ -1,6 +1,6 @@
 -- Sidebar — vertical column of icon + label entries.
 --
--- See docs/game/Sidebar.md for the full API and wiring examples.
+-- See docs/game/Sidebar.md for why it is built this way.
 
 local Sidebar = {}
 

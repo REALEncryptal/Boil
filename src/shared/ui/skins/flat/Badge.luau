@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local contract = require(ReplicatedStorage.Shared.ui.contract)
+local tokens = require(ReplicatedStorage.Shared.ui.tokens)
 local theme = require(script.Parent.theme)
 
 return function(props: contract.BadgeProps)
@@ -27,7 +28,7 @@ return function(props: contract.BadgeProps)
 
 	if props.icon then
 		inner.Icon = React.createElement("ImageLabel", {
-			Size = UDim2.fromOffset(theme.textSize, theme.textSize),
+			Size = UDim2.fromOffset(theme.type[theme.roles.badge], theme.type[theme.roles.badge]),
 			BackgroundTransparency = 1,
 			Image = props.icon,
 			ImageColor3 = theme.textColor,
@@ -42,7 +43,9 @@ return function(props: contract.BadgeProps)
 		BackgroundTransparency = 1,
 		Text = props.text or "",
 		TextColor3 = theme.textColor,
-		TextSize = props.textSize or theme.textSize,
+		TextSize = props.textSize
+			or tokens.resolveType(theme.type, props.role or theme.roles.badge, theme.type.body),
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold),
 		LayoutOrder = 2,
 	})

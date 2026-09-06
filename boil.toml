@@ -6,3 +6,4 @@ boil = "0.1.0"
 default = "https://github.com/REALEncryptal/boil-index"
 
 [dependencies]
+"encryptal/slop" = "^1.0.0"

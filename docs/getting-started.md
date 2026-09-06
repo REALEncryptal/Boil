@@ -99,7 +99,7 @@ Run a Play test. Expected output:
 If either is missing, check:
 
 - `Packages/` exists and contains `Loader.lua` — otherwise `wally install` hasn't run.
-- `build/` exists and contains `shared/HealthSystem/init.luau` etc. — otherwise `lune run tools/split` hasn't run.
+- `build/` exists and contains `shared/Settings/init.luau`, `shared/Settings/Manifest.luau` etc. — otherwise `lune run tools/split` hasn't run.
 - The Rojo plugin reports no sync errors.
 
 ## Optional: let an AI drive Studio (Studio MCP)

@@ -117,6 +117,9 @@ Assets.Icons = {
 	wheel = "rbxassetid://92211074359779",
 	rocket = "rbxassetid://137349421699691",
 	book = "rbxassetid://76948871632136",
+	-- The project's close glyph: a red X on a disc, drawn to sit inside
+	-- CloseButton's black circle. See CloseButton.luau.
+	close = "rbxassetid://114443534484810",
 }
 
 -- Brainrot character image icons. Kept separate from `Icons` because they're

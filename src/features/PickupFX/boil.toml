@@ -1,0 +1,24 @@
+# Package manifest for the PickupFX feature.
+#
+# This file lives inside the feature folder because the splitter only copies
+# `.luau` — a TOML file here never reaches Roblox, so one self-describing folder
+# is the whole package with nothing to keep in sync elsewhere.
+#
+# `boil publish PickupFX --dry-run` checks it: undeclared Wally requires,
+# undeclared cross-feature registration files, and layout problems.
+
+[package]
+name = "encryptal/pickup-fx"
+kind = "feature"
+version = "1.0.0"
+description = "Flying-icon pop effects: icons spawn at a point and sail along randomized bezier curves to a destination, driven by refs rather than per-frame React state."
+author = "encryptal"
+license = "MIT"
+folder = "PickupFX"
+
+[wally]
+React = "jsdotlua/react@17.1.0"
+ReactRoblox = "jsdotlua/react-roblox@17.1.0"
+
+[studio]
+notes = "Supply your own icon assets for the things being picked up."

@@ -5,6 +5,7 @@
 
     "ReplicatedStorage": {
       "Packages":  { "$path": "Packages" },
+      "DevPackages": { "$path": "DevPackages" },
       "Shared":    { "$path": "src/shared" },
       "Features":  { "$path": "build/shared" },
       "Skins":     { "$path": "src/skins" }

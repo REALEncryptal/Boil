@@ -16,6 +16,17 @@
 -- Pass `onClose = nil` and `title = nil` (and `icon = nil`) to omit either
 -- bar element; the top bar stays at `topBarHeight` regardless so the
 -- scroll area's height math doesn't shift.
+--
+-- `size` is in REFERENCE pixels (1280x720). A Window mounts its own `Surface`,
+-- so the same 760x520 window is 1140x780 on a 1080p monitor and shrinks to fit a
+-- phone without a second layout. That is why it no longer overflows small
+-- screens the way the old fixed 797x595 did. Pass `responsive = false` to opt out
+-- and get raw screen pixels (a Window already inside a Surface, for instance --
+-- nesting two would square the scale).
+--
+-- The responsive Surface and the enter/exit `scaleRef` are deliberately separate
+-- UIScale instances on different objects: one tracks the viewport, the other
+-- animates, and they compose instead of fighting over a single property.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -24,30 +35,39 @@ local Assets = require(script.Parent.assets)
 local Panel = require(script.Parent.Panel)
 local Badge = require(script.Parent.Badge)
 local Button = require(script.Parent.Button)
+local CloseButton = require(script.Parent.CloseButton)
+local Surface = require(script.Parent.Surface)
 local theme = require(script.Parent.theme)
+local tokens = require(script.Parent.tokens)
 local useTweenedScale = require(script.Parent.useTweenedScale)
 
 type Props = {
 	title: string?,
 	icon: string?,
-	titleVariant: Assets.VariantKey?,
-	closeVariant: Assets.VariantKey?,
+	-- Type role for the title, e.g. "title". Defaults to the skin's windowTitle.
+	titleRole: string?,
+	titleVariant: string?,
+	closeVariant: string?,
+	-- Reference-pixel size. See the note above.
 	size: UDim2?,
+	-- Set false to skip the responsive Surface (already inside one).
+	responsive: boolean?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
 	-- Height of the top bar in pixels.
 	topBarHeight: number?,
 	-- Horizontal overflow of the top bar past the panel edge (gem-style accent).
 	topBarOverflow: number?,
-	-- Content area padding (defaults: top=14, bottom=10, left=10, right=10).
+	-- Content area padding. Each side takes a `theme.space` step name or a raw
+	-- reference-pixel count.
 	contentPadding: {
-		top: number?,
-		bottom: number?,
-		left: number?,
-		right: number?,
+		top: (string | number)?,
+		bottom: (string | number)?,
+		left: (string | number)?,
+		right: (string | number)?,
 	}?,
-	-- Vertical gap between content rows.
-	contentSpacing: number?,
+	-- Vertical gap between content rows. Same units.
+	contentSpacing: (string | number)?,
 	onClose: (() -> ())?,
 	-- Optional element overlaid on the top bar's right side, just to the
 	-- left of the close button. The element fills a slot Frame sized by
@@ -69,14 +89,17 @@ return function(props: Props)
 	local topBarHeight = props.topBarHeight or theme.topBarHeight
 	local topBarOverflow = props.topBarOverflow or theme.topBarOverflow
 	local pad = props.contentPadding or {}
-	-- Top has to clear the panel stroke, so it's `padding + strokeThickness`
-	-- rather than the bare `padding`. Computed at render time so a live
-	-- theme edit propagates.
-	local padTop = pad.top or (theme.padding + theme.strokeThickness)
-	local padBottom = pad.bottom or theme.padding
-	local padLeft = pad.left or theme.padding
-	local padRight = pad.right or theme.padding
-	local contentSpacing = props.contentSpacing or theme.contentSpacing
+	local space = theme.space
+	-- Chrome clearance this skin needs regardless of what the caller asks for.
+	-- Gem's top bar is a sibling row above the scroll body, so the only thing to
+	-- clear is the panel's own inner stroke. Added to the caller's inset rather
+	-- than replaced by it — see contract.WindowProps.
+	local chromeTop = theme.strokeThickness
+	local padTop = chromeTop + tokens.resolveSpace(space, pad.top, space.lg)
+	local padBottom = tokens.resolveSpace(space, pad.bottom, space.lg)
+	local padLeft = tokens.resolveSpace(space, pad.left, space.lg)
+	local padRight = tokens.resolveSpace(space, pad.right, space.lg)
+	local contentSpacing = tokens.resolveSpace(space, props.contentSpacing, space.md)
 
 	-- Top bar: optional badge on the left, optional close button on the right.
 	local topBarChildren: { [string]: any } = {
@@ -89,7 +112,8 @@ return function(props: Props)
 
 	if props.title ~= nil or props.icon ~= nil then
 		topBarChildren.TitleBadge = React.createElement(Badge, {
-			variant = props.titleVariant or "blue",
+			variant = props.titleVariant or "primary",
+			role = props.titleRole or theme.roles.windowTitle,
 			text = props.title or "",
 			icon = props.icon,
 			size = UDim2.fromScale(1, 1),
@@ -98,9 +122,7 @@ return function(props: Props)
 	end
 
 	if props.onClose ~= nil then
-		topBarChildren.CloseButton = React.createElement(Button, {
-			variant = props.closeVariant or "red",
-			text = "X",
+		topBarChildren.CloseButton = React.createElement(CloseButton, {
 			size = UDim2.fromOffset(topBarHeight, topBarHeight),
 			layoutOrder = 1,
 			onClick = props.onClose,
@@ -191,9 +213,24 @@ return function(props: Props)
 		})
 	end
 
-	return React.createElement(Panel, {
-		size = props.size or theme.windowSize,
-		position = props.position,
-		anchorPoint = props.anchorPoint,
+	local size = props.size or theme.windowSize
+
+	local panel = React.createElement(Panel, {
+		size = if props.responsive == false then size else UDim2.fromScale(1, 1),
+		position = if props.responsive == false then props.position else UDim2.fromScale(0.5, 0.5),
+		anchorPoint = if props.responsive == false then props.anchorPoint else Vector2.new(0.5, 0.5),
 	}, panelChildren)
+
+	if props.responsive == false then
+		return panel
+	end
+
+	-- The Surface carries the placement (screen-relative) and the viewport scale;
+	-- the Panel inside just fills it, authored at the reference size.
+	return React.createElement(Surface, {
+		name = "Window",
+		size = size,
+		position = props.position or UDim2.fromScale(0.5, 0.5),
+		anchorPoint = props.anchorPoint or Vector2.new(0.5, 0.5),
+	}, { Panel = panel })
 end

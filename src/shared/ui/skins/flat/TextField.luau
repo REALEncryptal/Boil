@@ -5,10 +5,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local contract = require(ReplicatedStorage.Shared.ui.contract)
+local tokens = require(ReplicatedStorage.Shared.ui.tokens)
 local theme = require(script.Parent.theme)
 
 return function(props: contract.TextFieldProps)
-	local padding = props.padding or theme.padding
+	local padding = tokens.resolveSpace(theme.space, props.padding, theme.space.md)
 
 	local boxProps: { [string]: any } = {
 		Size = UDim2.fromScale(1, 1),
@@ -17,7 +18,8 @@ return function(props: contract.TextFieldProps)
 		PlaceholderText = props.placeholderText,
 		PlaceholderColor3 = props.placeholderColor or theme.mutedText,
 		TextColor3 = props.textColor or theme.textColor,
-		TextSize = props.textSize or theme.textSize,
+		TextSize = props.textSize
+			or tokens.resolveType(theme.type, props.role or theme.roles.input, theme.type.body),
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", props.weight or Enum.FontWeight.Medium),
 		TextXAlignment = props.xAlignment or Enum.TextXAlignment.Left,
 		TextYAlignment = props.yAlignment or Enum.TextYAlignment.Center,

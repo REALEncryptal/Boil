@@ -1,6 +1,6 @@
 -- Music — background music playback gated by the music.enabled setting.
 --
--- See docs/game/Music.md for the wiring.
+-- See docs/game/Music.md.
 
 local Music = {}
 

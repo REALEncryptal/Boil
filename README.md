@@ -93,8 +93,8 @@ build/                    generated, gitignored — Rojo reads from here
 
 Removable examples, and the reference for the conventions: `PlayerData`
 (ProfileStore + ReplicaService), `Settings` (registry, server validation),
-`Notes` (full stack: React → ByteNet → validate → replica → autosave),
-`HealthSystem`, `Music`, `PickupFX`, `Sidebar`, `UIShell`, `UIShowcase`, `Cmdr`.
+`Settings` (full stack: React → ByteNet → validate → replica → autosave),
+`HUD`, `Music`, `PickupFX`, `Sidebar`, `UIShell`, `Cmdr`.
 
 Remove all of them and the framework still boots and mounts — that's the boundary
 being real rather than aspirational. (Individually they're removable too, minus

@@ -71,7 +71,7 @@ Packets.EquipItem.send({ slot = 2, itemId = "WoodenSword" })
 
 Why Packets.luau over `sleitnick/net`: the namespace is strongly typed by schema, payloads are buffer-packed (much smaller on the wire), and typos in packet names fail at require-time instead of silently sending to the void.
 
-See `src/features/Notes/Packets.luau` for the working example.
+See `src/features/Settings/Packets.luau` for the working example.
 
 ## Constants module
 
@@ -157,7 +157,8 @@ Put them in `src/shared/utils/`:
 ```
 src/shared/utils/
 ├── init.luau            -- re-exports utilities
-├── LoadOrdered.luau
+├── FeatureLoader.luau
+├── Registry.luau
 └── MyNewUtil.luau
 ```
 
@@ -165,7 +166,8 @@ Then update `src/shared/utils/init.luau`:
 
 ```lua
 local utils = {}
-utils.LoadOrdered = require(script.LoadOrdered)
+utils.FeatureLoader = require(script.FeatureLoader)
+utils.Registry = require(script.Registry)
 utils.MyNewUtil = require(script.MyNewUtil)
 return utils
 ```

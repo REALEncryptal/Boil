@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local contract = require(ReplicatedStorage.Shared.ui.contract)
+local tokens = require(ReplicatedStorage.Shared.ui.tokens)
 local theme = require(script.Parent.theme)
 
 return function(props: contract.ScrollListProps)
@@ -15,7 +16,7 @@ return function(props: contract.ScrollListProps)
 	local children: { [string]: any } = {
 		Layout = React.createElement("UIListLayout", {
 			FillDirection = if horizontal then Enum.FillDirection.Horizontal else Enum.FillDirection.Vertical,
-			Padding = UDim.new(0, props.gap or theme.itemSpacing),
+			Padding = UDim.new(0, tokens.resolveSpace(theme.space, props.gap, theme.space.md)),
 			HorizontalAlignment = props.horizontalAlignment or Enum.HorizontalAlignment.Center,
 			VerticalAlignment = props.verticalAlignment or Enum.VerticalAlignment.Top,
 			HorizontalFlex = if props.fillHorizontal then Enum.UIFlexAlignment.Fill else Enum.UIFlexAlignment.None,
