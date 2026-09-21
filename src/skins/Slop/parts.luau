@@ -4,7 +4,7 @@
 -- Every surface in this skin is the same short stack of strokes, so they live
 -- here once instead of being re-typed in eleven files:
 --
---   innerGlow  — soft white bevel just inside the edge
+--   innerGlow  — translucent dark band just inside the edge
 --   outline    — the heavy dark border on a glass surface
 --   gemOutline — the same border tinted by a variant gradient
 --   fill       — the variant gradient that paints a gem surface
@@ -19,7 +19,8 @@ local theme = require(script.Parent.theme)
 
 local parts = {}
 
--- Soft white glow hugging the inside edge. Drawn below the outline (ZIndex 1)
+-- Translucent dark band hugging the inside edge (no Color, so UIStroke's default
+-- black at innerGlowTransparency). Drawn below the outline (ZIndex 1)
 -- so the dark border always reads on top of it.
 function parts.innerGlow(thickness: number?): any
 	return React.createElement("UIStroke", {

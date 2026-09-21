@@ -79,6 +79,7 @@ return function(props: contract.WindowProps)
 				Position = UDim2.fromOffset(space.lg, 0),
 				BackgroundTransparency = 1,
 				Text = props.title or "",
+				RichText = props.titleRichText,
 				TextColor3 = theme.textColor,
 				TextSize = theme.type[props.titleRole or theme.roles.windowTitle],
 				TextTruncate = Enum.TextTruncate.AtEnd,

@@ -43,6 +43,7 @@ local useTweenedScale = require(script.Parent.useTweenedScale)
 
 type Props = {
 	title: string?,
+	titleRichText: boolean?,
 	icon: string?,
 	-- Type role for the title, e.g. "title". Defaults to the skin's windowTitle.
 	titleRole: string?,
@@ -115,6 +116,7 @@ return function(props: Props)
 			variant = props.titleVariant or "primary",
 			role = props.titleRole or theme.roles.windowTitle,
 			text = props.title or "",
+			richText = props.titleRichText,
 			icon = props.icon,
 			size = UDim2.fromScale(1, 1),
 			layoutOrder = 0,

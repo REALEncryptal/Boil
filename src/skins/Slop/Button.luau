@@ -27,7 +27,8 @@ return function(props: Boil.ButtonProps)
 	local scale = Boil.ui.useScale()
 	local variant = theme.variant(props.variant)
 	local disabled = props.disabled == true
-	local hover = Boil.ui.useHoverScale()
+	local hover = Boil.ui.useHoverScale({ disabled = disabled })
+	local strokeThickness = props.strokeThickness or theme.strokeThickness
 
 	return React.createElement("Frame", {
 		Size = props.size or theme.buttonSize,
@@ -40,8 +41,8 @@ return function(props: Boil.ButtonProps)
 	}, {
 		UIScale = React.createElement("UIScale", { Scale = 1, ref = hover.scaleRef }),
 		UIGradient = parts.fill(variant),
-		InnerGlow = parts.innerGlow(theme.gemInnerGlowThickness),
-		Outline = parts.gemOutline(variant),
+		InnerGlow = parts.innerGlow(strokeThickness * 2),
+		Outline = parts.gemOutline(variant, strokeThickness),
 
 		Label = React.createElement("TextLabel", {
 			Size = UDim2.new(1, 0, 0.675, 0),
@@ -55,7 +56,7 @@ return function(props: Boil.ButtonProps)
 			FontFace = theme.font(props.textWeight),
 			ZIndex = 3,
 		}, {
-			TextStroke = parts.textStroke(theme.gemTextStrokeThickness, variant),
+			TextStroke = parts.textStroke(props.textStrokeThickness or theme.gemTextStrokeThickness, variant),
 			SizeCap = parts.textSizeCap(parts.capFor(props.textSize or props.role, theme.roles.button, scale)),
 		}),
 
@@ -69,16 +70,21 @@ return function(props: Boil.ButtonProps)
 			})
 			else nil,
 
-		Trigger = React.createElement("TextButton", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Text = "",
-			ZIndex = 10,
-			[React.Event.MouseEnter] = if disabled then nil else hover.onEnter,
-			[React.Event.MouseLeave] = if disabled then nil else hover.onLeave,
-			[React.Event.MouseButton1Down] = if disabled then nil else hover.onPress,
-			[React.Event.MouseButton1Up] = if disabled then nil else hover.onRelease,
-			[React.Event.Activated] = if disabled then nil else props.onClick,
-		}),
+		Trigger = React.createElement(
+			"TextButton",
+			(function()
+				local trigger: { [any]: any } = {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Text = "",
+					AutoButtonColor = false,
+					ZIndex = 10,
+				}
+				for key, value in hover.events(props.onClick) do
+					trigger[key] = value
+				end
+				return trigger
+			end)()
+		),
 	})
 end

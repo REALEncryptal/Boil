@@ -54,8 +54,8 @@ theme.roles = {
 ------------------------------------------------------------------------------
 -- Flat surfaces
 ------------------------------------------------------------------------------
-theme.strokeThickness = 2
-theme.thinStrokeThickness = 1
+theme.strokeThickness = 1.5
+theme.thinStrokeThickness = 0.75
 theme.cornerRadius = UDim.new(0, 4)
 theme.glassTransparency = 0.15
 
@@ -92,6 +92,7 @@ theme.variants = {
 	green = Color3.fromRGB(84, 184, 116),
 	purple = Color3.fromRGB(154, 96, 206),
 	yellow = Color3.fromRGB(212, 184, 76),
+	brown = Color3.fromRGB(166, 106, 63),
 	white = Color3.fromRGB(210, 210, 216),
 	rainbow = Color3.fromRGB(184, 124, 204),
 }
@@ -104,6 +105,9 @@ theme.variantForRole = {
 	warning = "yellow",
 	neutral = "white",
 	special = "purple",
+	pet = "brown",
+	-- A paid action (Robux). Flat has one purple, so it shares special's.
+	premium = "purple",
 }
 
 function theme.resolveVariant(key: string?): string

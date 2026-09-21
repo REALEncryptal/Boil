@@ -16,7 +16,7 @@ local DISABLED_OVERLAY_TRANSPARENCY = 0.45
 return function(props: contract.ButtonProps)
 	local accent = theme.accent(props.variant)
 	local disabled = props.disabled == true
-	local hover = useHoverScale()
+	local hover = useHoverScale({ disabled = disabled })
 
 	return React.createElement("Frame", {
 		Size = props.size or theme.buttonSize,
@@ -32,7 +32,10 @@ return function(props: contract.ButtonProps)
 		}),
 		UIScale = React.createElement("UIScale", { Scale = 1, ref = hover.scaleRef }),
 		UICorner = React.createElement("UICorner", { CornerRadius = theme.cornerRadius }),
-		UIStroke = React.createElement("UIStroke", { Thickness = theme.strokeThickness, Color = accent }),
+		UIStroke = React.createElement("UIStroke", {
+			Thickness = props.strokeThickness or theme.strokeThickness,
+			Color = accent,
+		}),
 
 		Label = React.createElement("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -47,7 +50,14 @@ return function(props: contract.ButtonProps)
 				props.textWeight or Enum.FontWeight.Bold
 			),
 			ZIndex = 2,
-		}),
+		}, if props.textStrokeThickness
+			then {
+				TextStroke = React.createElement("UIStroke", {
+					Thickness = props.textStrokeThickness,
+					Color = Color3.fromRGB(0, 0, 0),
+				}),
+			}
+			else nil),
 
 		Trigger = React.createElement(
 			"TextButton",
@@ -59,7 +69,7 @@ return function(props: contract.ButtonProps)
 					AutoButtonColor = false,
 					ZIndex = 10,
 				}
-				for key, value in hover.events(props.onClick, disabled) do
+				for key, value in hover.events(props.onClick) do
 					trigger[key] = value
 				end
 				return trigger

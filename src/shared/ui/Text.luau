@@ -19,6 +19,9 @@
 --     Pass `strokeThickness` to force it either way.
 --   * `wrap` and `truncate` exist. Text that can outgrow its box must set one;
 --     silently clipping a label is a bug, and it used to be the only option.
+--   * `scaled` fills the box (TextScaled) instead of taking the role's size —
+--     for a label inside a BillboardGui sized in studs, where a pixel size would
+--     read the same from across the map. The role still decides the outline.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
@@ -47,7 +50,10 @@ type Props = {
 	shadow: boolean?,
 	shadowColor: Color3?,
 	strokeThickness: number?,
+	strokeColor: Color3?,
 	foregroundOffset: number?,
+	gradient: ColorSequence?,
+	gradientRotation: number?,
 }
 
 local WHITE = Color3.fromRGB(255, 255, 255)
@@ -83,6 +89,7 @@ return function(props: Props)
 		TextXAlignment = xAlign,
 		TextYAlignment = yAlign,
 		TextWrapped = props.wrap,
+		TextScaled = props.scaled,
 		TextTruncate = if props.truncate then Enum.TextTruncate.AtEnd else nil,
 		RichText = props.richText,
 		LineHeight = props.lineHeight,
@@ -97,7 +104,23 @@ return function(props: Props)
 		end
 		return React.createElement("UIStroke", {
 			Thickness = strokeThickness,
+			-- nil leaves UIStroke's own default, which is the black this skin
+			-- has always drawn.
+			Color = props.strokeColor,
 			LineJoinMode = Enum.LineJoinMode.Miter,
+		})
+	end
+
+	-- A gradient paints the GLYPHS, so it belongs on the label carrying the
+	-- visible text — never on the shadow layer, which would tint the shadow the
+	-- same colours and cancel the effect out.
+	local function gradient()
+		if props.gradient == nil then
+			return nil
+		end
+		return React.createElement("UIGradient", {
+			Color = props.gradient,
+			Rotation = props.gradientRotation or 0,
 		})
 	end
 
@@ -110,7 +133,10 @@ return function(props: Props)
 		flat.LayoutOrder = props.layoutOrder
 		flat.ZIndex = props.zIndex
 		flat.AutomaticSize = props.automaticSize
-		return React.createElement("TextLabel", flat, { UIStroke = stroke() })
+		return React.createElement("TextLabel", flat, {
+			UIStroke = stroke(),
+			UIGradient = gradient(),
+		})
 	end
 
 	-- Shadow variant: an outer label painted in `shadowColor` with an inner copy
@@ -131,6 +157,9 @@ return function(props: Props)
 
 	return React.createElement("TextLabel", outer, {
 		UIStroke = stroke(),
-		FgTextLabel = React.createElement("TextLabel", inner, { UIStroke = stroke() }),
+		FgTextLabel = React.createElement("TextLabel", inner, {
+			UIStroke = stroke(),
+			UIGradient = gradient(),
+		}),
 	})
 end

@@ -23,6 +23,9 @@ local tokens = Boil.ui.tokens
 
 -- Icon inset within the top bar, from the template.
 local ICON_SCALE = 0.9
+-- Close button inset within the top bar. Deliberately under the icon's scale:
+-- at a full bar height the close disc read as the loudest thing on the window.
+local CLOSE_SCALE = 0.85
 -- Title height as a fraction of the bar. Under TextScaled this *is* the rendered
 -- text size, so it also has to leave the glyph outline somewhere to draw.
 local TITLE_HEIGHT = 0.7
@@ -30,6 +33,7 @@ local TITLE_HEIGHT = 0.7
 return function(props: Boil.WindowProps)
 	local topBarHeight = props.topBarHeight or theme.topBarHeight
 	local iconSize = topBarHeight * ICON_SCALE
+	local closeSize = topBarHeight * CLOSE_SCALE
 	local contentSpacing = tokens.resolveSpace(theme.space, props.contentSpacing, theme.contentSpacing)
 
 	local pad = props.contentPadding or {}
@@ -38,10 +42,21 @@ return function(props: Boil.WindowProps)
 	-- rather than sitting above it. ADDED to the caller's inset — a caller can't
 	-- know about the overlap, and a total-inset reading of `pad.top` put the
 	-- title badge straight on top of the first row.
-	local chromeTop = theme.strokeThickness + topBarHeight / 2
+	--
+	-- The overhang is measured from the chrome that actually EXISTS, not from the
+	-- bar frame. That frame is a full bar tall and centred on the top edge, but
+	-- nothing draws it — only the icon, the title and the close button live in
+	-- it, and every one of them is inset within it. Clearing the empty frame's
+	-- half-height spent ~12px on air below the lowest thing on screen.
+	local overhang = topBarHeight * math.max(ICON_SCALE, CLOSE_SCALE, TITLE_HEIGHT) / 2
+	local chromeTop = theme.strokeThickness + overhang
 	local chrome = theme.strokeThickness
 
-	local padTop = chromeTop + tokens.resolveSpace(theme.space, pad.top, theme.padding)
+	-- The top gets the SMALLEST step, not the full surface padding: `chromeTop`
+	-- has already spent an icon's half-height clearing the floating chrome, so
+	-- anything more than a hair on top of that reads as a gap no other edge has.
+	-- The other three edges keep `theme.padding`.
+	local padTop = chromeTop + tokens.resolveSpace(theme.space, pad.top, theme.space.xs)
 	local padBottom = chrome + tokens.resolveSpace(theme.space, pad.bottom, theme.padding)
 	local padLeft = chrome + tokens.resolveSpace(theme.space, pad.left, theme.padding)
 	local padRight = chrome + tokens.resolveSpace(theme.space, pad.right, theme.padding)
@@ -96,6 +111,7 @@ return function(props: Boil.WindowProps)
 			AnchorPoint = Vector2.new(0, 0.5),
 			BackgroundTransparency = 1,
 			Text = props.title,
+			RichText = props.titleRichText,
 			TextColor3 = theme.textColor,
 			TextScaled = true,
 			TextWrapped = true,
@@ -126,7 +142,7 @@ return function(props: Boil.WindowProps)
 		-- The project's fixed close control, not a skinned Button — see
 		-- Shared.ui.CloseButton for why that one primitive opts out of the seam.
 		topBar.CloseButton = React.createElement(Boil.ui.CloseButton, {
-			size = UDim2.fromOffset(topBarHeight, topBarHeight),
+			size = UDim2.fromOffset(closeSize, closeSize),
 			position = UDim2.fromScale(1, 0.5),
 			anchorPoint = Vector2.new(0.5, 0.5),
 			zIndex = 5,

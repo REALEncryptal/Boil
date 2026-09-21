@@ -1,6 +1,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+-- Creates the ByteNet remotes before any client waits on them. Features define
+-- their packets lazily, so without this the transport would only come up when a
+-- service first touched its own packets. See src/client/init.client.luau.
+require(ReplicatedStorage.Packages.ByteNet)
+
 local Loader = require(ReplicatedStorage.Packages.Loader)
 local FeatureLoader = require(ReplicatedStorage.Shared.utils.FeatureLoader)
 

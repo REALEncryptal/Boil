@@ -11,7 +11,7 @@ local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local ui = require(ReplicatedStorage.Shared.ui)
 
-local VARIANTS = { "primary", "danger", "success", "warning", "special", "secondary" }
+local VARIANTS = { "primary", "danger", "success", "warning", "special", "premium", "secondary", "pet" }
 
 return {
 	summary = "The gem fill/glow/shine stack on its own. `variant` names a semantic role; the skin maps it to a palette.",

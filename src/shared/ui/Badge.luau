@@ -16,6 +16,7 @@ local theme = require(script.Parent.theme)
 type Props = {
 	variant: string?,
 	text: string?,
+	richText: boolean?,
 	role: string?,
 	textSize: number?,
 	icon: string?, -- rbxassetid:// for the leading icon; nil hides the slot
@@ -50,6 +51,7 @@ return function(props: Props)
 
 		TextLabel = React.createElement(Text, {
 			text = props.text or "",
+			richText = props.richText,
 			role = props.role or theme.roles.badge,
 			textSize = props.textSize,
 			weight = Enum.FontWeight.Heavy,

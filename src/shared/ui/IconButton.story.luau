@@ -9,14 +9,15 @@ local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local ui = require(ReplicatedStorage.Shared.ui)
 
 return {
-	summary = "Gem-style icon button. Pick a variant, paste an asset id, drag size to taste; click prints.",
+	summary = "Icon button. Flip surface between the gem fill and translucent glass, pick a variant, paste an asset id; click prints.",
 	react = React,
 	reactRoblox = ReactRoblox,
 
 	controls = {
 		variant = UILabs.Choose({
-			"red", "blue", "green", "purple", "yellow", "white", "rainbow",
+			"red", "blue", "green", "purple", "yellow", "brown", "white", "rainbow",
 		}),
+		surface = UILabs.Choose({ "gem", "glass" }),
 		icon = "rbxasset://textures/ui/GuiImagePlaceholder.png",
 		iconScale = UILabs.Slider(0.6, 0.1, 1, 0.05),
 		width = UILabs.Slider(80, 20, 400, 1),
@@ -27,13 +28,14 @@ return {
 		local c = props.controls
 		return React.createElement(ui.IconButton, {
 			variant = c.variant,
+			surface = c.surface,
 			icon = c.icon,
 			iconScale = c.iconScale,
 			size = UDim2.fromOffset(c.width, c.height),
 			position = UDim2.fromScale(0.5, 0.5),
 			anchorPoint = Vector2.new(0.5, 0.5),
 			onClick = function()
-				print(`[UI Labs] IconButton ({c.variant}) clicked`)
+				print(`[UI Labs] IconButton ({c.surface}/{c.variant}) clicked`)
 			end,
 		})
 	end,

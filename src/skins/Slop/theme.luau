@@ -3,7 +3,7 @@
 -- (StarterGui.WhiteSkinTemplate._scaffold).
 --
 -- The look, in one line: translucent black glass surfaces, a heavy dark outline,
--- a soft white inner glow, square corners, FredokaOne, and per-variant gradient
+-- a translucent dark inner band, square corners, FredokaOne, and per-variant gradient
 -- fills on the "gem" surfaces (Button, IconButton, GemBackground, ProgressBar
 -- fill, Checkbox fill, Window close button).
 --
@@ -38,18 +38,23 @@ end
 -- Strokes
 ------------------------------------------------------------------------------
 -- The heavy outline every surface carries.
-theme.strokeThickness = 6
+theme.strokeThickness = 4
 -- Outline drawn on text glyphs sitting on glass (Text, Badge label, …).
-theme.textStrokeThickness = 4
+theme.textStrokeThickness = 2.5
 -- Slightly heavier outline for text on a gem surface, where it also carries the
 -- variant gradient. The template used 5 on the Button label and 6 on the close
 -- button's; normalized to one token.
-theme.gemTextStrokeThickness = 5
--- Soft white inner glow, in three sizes: glass surfaces, gem surfaces, and the
--- smaller fills (ProgressBar's bar) that can't carry the full 15px.
-theme.innerGlowThickness = 15
-theme.gemInnerGlowThickness = 12
-theme.fillInnerGlowThickness = 9
+theme.gemTextStrokeThickness = 3.5
+-- Translucent inner band just inside the edge. No Color is set on it, so it
+-- renders as UIStroke's default black at `innerGlowTransparency`.
+--
+-- It's drawn under the outline at the same inner edge, so the outline hides its
+-- first `strokeThickness` px. Glass and gem surfaces carry an outline, so their
+-- band is 2x the stroke: what shows past the outline is exactly one stroke wide.
+-- ProgressBar's bar carries no outline, so its band is the bare stroke width.
+theme.innerGlowThickness = theme.strokeThickness * 2
+theme.gemInnerGlowThickness = theme.strokeThickness * 2
+theme.fillInnerGlowThickness = theme.strokeThickness
 theme.innerGlowTransparency = 0.89
 -- Outline color on gem surfaces. The gradient child tints it, so this reads as
 -- a darkened edge of the variant rather than pure black.
@@ -187,6 +192,7 @@ theme.variants = {
 	green = gradient(90, { { 0, 117, 255, 58 }, { 1, 58, 213, 31 } }),
 	purple = gradient(90, { { 0, 255, 83, 226 }, { 1, 170, 43, 195 } }),
 	yellow = gradient(90, { { 0, 251, 255, 24 }, { 1, 229, 198, 41 } }),
+	brown = gradient(90, { { 0, 201, 130, 69 }, { 1, 117, 66, 31 } }),
 	white = gradient(90, { { 0, 255, 255, 255 }, { 1, 210, 220, 232 } }),
 	rainbow = gradient(10, {
 		{ 0, 255, 66, 66 },
@@ -216,6 +222,10 @@ theme.variantForRole = {
 	warning = "yellow",
 	neutral = "white",
 	special = "rainbow",
+	pet = "brown",
+	-- A paid action (Robux). Pink-to-purple, the colour Roblox players read as
+	-- "this costs Robux".
+	premium = "purple",
 }
 
 function theme.resolveVariant(key: string?): string

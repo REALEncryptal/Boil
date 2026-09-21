@@ -9,7 +9,7 @@
 -- The manifest is the single source of truth for what a feature needs, but a TOML
 -- file never reaches Roblox (only .luau is copied), so the runtime had no way to
 -- read it — dependencies existed for the CLI and were invisible to the game.
--- Emitting a Luau mirror is what lets `FeatureLoader` sort features by their
+-- Emitting a Luau mirror is what lets `LoadOrdered` sort features by their
 -- dependency graph and warn about a missing one at boot, instead of every feature
 -- guessing a `Priority` integer.
 --

@@ -1,6 +1,8 @@
 --!strict
 -- Flat Text: a plain label, no drop-shadow/stroke. Honors contract.TextProps;
--- shadow/strokeThickness/foregroundOffset are accepted but ignored.
+-- shadow/strokeThickness/strokeColor/foregroundOffset are accepted but ignored —
+-- this skin draws no outline, so there is nothing to recolour. `gradient` IS
+-- honoured: it paints the glyphs, which every skin can do.
 --
 -- Size comes from the type ROLE, resolved against flat's own scale — the same
 -- `role = "body"` call site renders at 20 here and 22 under gem, which is the
@@ -17,6 +19,14 @@ local function font(weight: Enum.FontWeight?): Font
 end
 
 return function(props: contract.TextProps)
+	local children: { [string]: any } = {}
+	if props.gradient then
+		children.TextGradient = React.createElement("UIGradient", {
+			Color = props.gradient,
+			Rotation = props.gradientRotation or 0,
+		})
+	end
+
 	return React.createElement("TextLabel", {
 		Text = props.text,
 		TextColor3 = props.color or theme.textColor,
@@ -24,6 +34,7 @@ return function(props: contract.TextProps)
 			or tokens.resolveType(theme.type, props.role or theme.roles.default, theme.type.body),
 		FontFace = font(props.weight),
 		TextWrapped = props.wrap,
+		TextScaled = props.scaled,
 		TextTruncate = if props.truncate then Enum.TextTruncate.AtEnd else nil,
 		RichText = props.richText,
 		LineHeight = props.lineHeight,
@@ -36,5 +47,5 @@ return function(props: contract.TextProps)
 		ZIndex = props.zIndex,
 		TextXAlignment = props.xAlignment or Enum.TextXAlignment.Center,
 		TextYAlignment = props.yAlignment or Enum.TextYAlignment.Center,
-	})
+	}, children)
 end

@@ -2,9 +2,15 @@
 -- Slop Text: a scale-to-fit FredokaOne label with a dark outline on the glyphs.
 --
 -- The outline *is* this skin's version of gem's drop-shadow, so it's drawn by
--- default; pass `shadow = false` for a bare label. `shadowColor` recolors the
--- outline and `strokeThickness` resizes it. `foregroundOffset` is gem-specific
--- (it offsets a second shadow layer) and is ignored here.
+-- default; pass `shadow = false` for a bare label. `strokeColor` (or the older
+-- `shadowColor`) recolors the outline and `strokeThickness` resizes it.
+-- `gradient` paints the glyphs. `foregroundOffset` is gem-specific (it offsets a
+-- second shadow layer) and is ignored here.
+--
+-- Every label here is already TextScaled, capped at the role's ceiling. `scaled`
+-- asks for the BOX to set the size outright — a BillboardGui sized in studs,
+-- where a pixel ceiling would pin the glyphs at one size on screen no matter
+-- how close the tag is — so under it the cap comes off.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -21,15 +27,26 @@ return function(props: Boil.TextProps)
 
 	-- `textSize` still wins when given; otherwise the role sets the ceiling.
 	local children: { [string]: any } = {
-		SizeCap = parts.textSizeCap(parts.capFor(props.textSize or props.role, theme.roles.default, scale)),
+		SizeCap = if props.scaled
+			then nil
+			else parts.textSizeCap(parts.capFor(props.textSize or props.role, theme.roles.default, scale)),
 	}
 
 	if showStroke then
 		children.TextStroke = React.createElement("UIStroke", {
-			Color = props.shadowColor or Color3.fromRGB(0, 0, 0),
+			-- `strokeColor` is the contract's name for this; `shadowColor` stays
+			-- honoured because this skin has always spelled it that way.
+			Color = props.strokeColor or props.shadowColor or Color3.fromRGB(0, 0, 0),
 			Thickness = props.strokeThickness or theme.textStrokeThickness,
 			BorderStrokePosition = Enum.BorderStrokePosition.Inner,
 			ZIndex = 2,
+		})
+	end
+
+	if props.gradient then
+		children.TextGradient = React.createElement("UIGradient", {
+			Color = props.gradient,
+			Rotation = props.gradientRotation or 0,
 		})
 	end
 

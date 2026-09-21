@@ -40,14 +40,27 @@ export type TypeScale = { display: number, title: number, heading: number, body:
 export type SpaceScale = { xs: number, sm: number, md: number, lg: number, xl: number, xxl: number }
 
 -- `variant` is what a control MEANS, not what colour it is. The documented set
--- is `primary | secondary | danger | success | warning | neutral | special`, and
--- each skin maps those onto its own palette.
+-- is `primary | secondary | danger | success | warning | neutral | special |
+-- premium | pet` (premium: a paid action, such as a Robux button; pet: the
+-- Pets rail action), and each skin maps those onto its own palette.
 --
 -- The type is an open string, not a closed union: skins are installable (see
 -- docs/registry.md), so a skin must be able to offer a variant the framework
 -- never shipped. Unknown names fall back to the skin's default rather than
 -- erroring. The seven legacy colour names still resolve for older call sites.
 export type VariantKey = string
+
+-- Which surface family a primitive paints. Two families run through the kit and
+-- every skin has both, because `Panel` has always offered the pair:
+--
+--   gem   — the opaque, variant-tinted surface (Button, IconButton, fills).
+--   glass — the translucent dark surface Panel paints when given no variant.
+--
+-- Panel picks between them implicitly (a `variant` means gem). Primitives that
+-- are gem by default name it explicitly with `surface` instead, so a call site
+-- can ask for glass without giving up its variant. Skins that predate the prop
+-- ignore it and keep painting their default surface.
+export type SurfaceStyle = string
 
 -- Props shared by virtually every primitive (placement in the parent).
 export type LayoutProps = {
@@ -65,6 +78,10 @@ export type ButtonProps = {
 	role: TypeRole?,
 	textSize: number?,
 	textWeight: Enum.FontWeight?,
+	-- Optional emphasis overrides for unusually large/world-space treatments.
+	-- Each skin keeps its own defaults when these are omitted.
+	strokeThickness: number?,
+	textStrokeThickness: number?,
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
@@ -78,6 +95,11 @@ export type ButtonProps = {
 
 export type IconButtonProps = {
 	variant: VariantKey?,
+	-- "gem" (default) or "glass" — see SurfaceStyle. Glass is a NEUTRAL surface:
+	-- it ignores `variant`, because a tinted edge on a translucent body reads as
+	-- a washed-out gem rather than as chrome. Pick gem when the control should
+	-- carry its semantic colour.
+	surface: SurfaceStyle?,
 	icon: string?,
 	iconColor: Color3?,
 	iconScale: number?,
@@ -100,6 +122,7 @@ export type IconButtonProps = {
 export type BadgeProps = {
 	variant: VariantKey?,
 	text: string?,
+	richText: boolean?,
 	role: TypeRole?,
 	textSize: number?,
 	icon: string?,
@@ -118,6 +141,11 @@ export type PanelProps = {
 	zIndex: number?,
 	transparency: number?,
 	strokeThickness: number?,
+	-- Inset from the panel's edge to its content, on top of whatever clearance
+	-- the skin's own outline needs (an inner-drawn stroke eats the first few
+	-- pixels; the skin adds that itself, the caller never does). Omit to take
+	-- the skin's default inset. Same rule as Window's `contentPadding`.
+	padding: SpaceValue?,
 	-- Gem mode: when a variant is set the panel paints a gem surface instead of
 	-- the dark-glass default. Skins without a gem surface ignore these.
 	variant: VariantKey?,
@@ -156,7 +184,23 @@ export type TextProps = {
 	shadow: boolean?,
 	shadowColor: Color3?,
 	strokeThickness: number?,
+	-- Recolors the glyph outline. Unset leaves the skin's own (black in gem and
+	-- slop). A skin that draws no outline ignores it.
+	strokeColor: Color3?,
 	foregroundOffset: number?,
+	-- Paints the glyphs with a gradient instead of a flat `color`. Additive:
+	-- unset renders exactly as before, so a skin that ignores it degrades to a
+	-- flat label rather than breaking.
+	gradient: ColorSequence?,
+	-- Gradient angle in degrees. 0 is left-to-right; 90 is top-to-bottom, which
+	-- is what a two-tone display treatment usually wants.
+	gradientRotation: number?,
+	-- Fill the box instead of taking a role size (TextScaled). For a label whose
+	-- box is itself proportional — a world-space BillboardGui sized in studs — so
+	-- the glyphs shrink with distance the way the rest of the tag does. The role
+	-- still names the job (in gem, whether the glyphs carry an outline); only the
+	-- size comes from the box. Additive: unset renders exactly as before.
+	scaled: boolean?,
 }
 
 export type TextFieldProps = {
@@ -253,6 +297,7 @@ export type WindowContentPadding = {
 
 export type WindowProps = {
 	title: string?,
+	titleRichText: boolean?,
 	icon: string?,
 	titleRole: TypeRole?,
 	titleVariant: VariantKey?,

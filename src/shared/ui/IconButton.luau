@@ -3,6 +3,11 @@
 -- Trigger TextButton + GemBackground with shine + hover scale) but with an
 -- ImageLabel where the text label would be. Use this for HUD action bars and
 -- anywhere you want a square gem with no copy.
+--
+-- `surface = "glass"` drops the gem background for the same translucent black
+-- body Panel paints by default, keeping the black outline and the hover feel.
+-- Use it where the button should sit over the world rather than shout off it.
+-- Glass is neutral: it ignores `variant`, since there is no fill left to tint.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,6 +21,8 @@ local useHoverScale = require(script.Parent.useHoverScale)
 
 type Props = {
 	variant: string?,
+	-- "gem" (default) or "glass"; see contract.SurfaceStyle.
+	surface: string?,
 	icon: string?, -- rbxassetid:// for the icon; falls back to a placeholder.
 	iconColor: Color3?,
 	-- ImageLabel size relative to the button (0..1). Default leaves an 8px
@@ -39,6 +46,7 @@ return function(props: Props)
 	local variant = Assets.Variants[variantKey] or Assets.Variants.blue
 	local rotation = if variantKey == "rainbow" then 0 else 90
 	local iconScale = props.iconScale or 0.6
+	local glass = props.surface == "glass"
 
 	local hover = useHoverScale()
 	-- Reference-space floor that renders to the real-pixel minimum tap target.
@@ -48,7 +56,8 @@ return function(props: Props)
 		Size = props.size or theme.buttonSize,
 		Position = props.position,
 		AnchorPoint = props.anchorPoint,
-		BackgroundColor3 = WHITE,
+		BackgroundColor3 = if glass then Color3.fromRGB(0, 0, 0) else WHITE,
+		BackgroundTransparency = if glass then theme.glassTransparency else 0,
 		BorderSizePixel = 0,
 		LayoutOrder = props.layoutOrder,
 		ZIndex = props.zIndex or 2,
@@ -87,13 +96,15 @@ return function(props: Props)
 			end)()
 		),
 
-		BackgroundDeco = React.createElement(GemBackground, {
-			fillGradient = variant.fill,
-			glowGradient = variant.glow,
-			fillRotation = rotation,
-			glowRotation = rotation,
-			hasShine = true,
-		}),
+		BackgroundDeco = if glass
+			then nil
+			else React.createElement(GemBackground, {
+				fillGradient = variant.fill,
+				glowGradient = variant.glow,
+				fillRotation = rotation,
+				glowRotation = rotation,
+				hasShine = true,
+			}),
 
 		Content = if props.children
 			then React.createElement("Frame", {

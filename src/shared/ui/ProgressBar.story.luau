@@ -25,7 +25,7 @@ return {
 		tweenDuration = UILabs.Slider(0.3, 0, 2, 0.05),
 		showText = true,
 		showBleeds = true,
-		strokeThickness = UILabs.Slider(4, 0, 12, 1),
+		strokeThickness = UILabs.Slider(ui.theme.strokeThickness, 0, 12, 0.5),
 	},
 
 	story = function(props)

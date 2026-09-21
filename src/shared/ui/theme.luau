@@ -47,11 +47,11 @@ theme.roles = {
 -- Strokes
 ------------------------------------------------------------------------------
 -- Gem outline used by Button, Panel, TextField and GemBackground.
-theme.strokeThickness = 4
+theme.strokeThickness = 2.5
 -- Thinner outline for text. Applied only when a label opts in — body copy reads
 -- badly with an outline eating its counters, which is half of why small text
 -- looked muddy before.
-theme.thinStrokeThickness = 2
+theme.thinStrokeThickness = 1.5
 
 ------------------------------------------------------------------------------
 -- Surface
@@ -102,6 +102,9 @@ theme.variantForRole = {
 	warning = "yellow",
 	neutral = "white",
 	special = "rainbow",
+	pet = "brown",
+	-- A paid action (Robux): pink-to-purple.
+	premium = "purple",
 }
 
 function theme.resolveVariant(key: string?): string

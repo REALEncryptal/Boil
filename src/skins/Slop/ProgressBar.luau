@@ -35,11 +35,12 @@ return function(props: Boil.ProgressBarProps)
 		duration = props.tweenDuration or DEFAULT_TWEEN_DURATION,
 	})
 
-	-- The bar is inset off the inner-drawn outline, but the *label* is not: a
-	-- UIPadding on the track would apply to both, and on a bar this thin it
-	-- leaves the label a sliver to scale into. So the inset lives on a wrapper
-	-- around the bar only, and the label keeps the full track height.
-	local inset = theme.tightPadding + strokeThickness
+	-- The bar is inset only past the inner-drawn outline, covering the secondary
+	-- inner-glow band instead of leaving another gap around the fill. The *label*
+	-- is not inset: a UIPadding on the track would apply to both, and on a bar
+	-- this thin it leaves the label a sliver to scale into. So the inset lives on
+	-- a wrapper around the bar only, and the label keeps the full track height.
+	local inset = strokeThickness
 
 	local children: { [string]: any } = {
 		InnerGlow = parts.innerGlow(),

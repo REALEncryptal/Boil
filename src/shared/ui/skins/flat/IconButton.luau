@@ -1,5 +1,8 @@
 --!strict
 -- Flat IconButton: gray box, accent border, centered icon, invisible trigger.
+-- `surface = "glass"` sinks the box to the recessed grey this skin uses for a
+-- surface that should read as *behind* the content rather than on top of it,
+-- with the neutral border rather than the variant accent.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
@@ -8,7 +11,9 @@ local useHoverScale = require(ReplicatedStorage.Shared.ui.useHoverScale)
 local theme = require(script.Parent.theme)
 
 return function(props: contract.IconButtonProps)
-	local accent = theme.accent(props.variant)
+	local glass = props.surface == "glass"
+	local accent = if glass then theme.border else theme.accent(props.variant)
+	local background = if glass then theme.surfaceDeep else theme.surface
 	-- Caller content rides inside the frame, so the hover scale carries it.
 	local content = if props.children
 		then React.createElement("Frame", {
@@ -25,7 +30,7 @@ return function(props: contract.IconButtonProps)
 		Size = props.size or theme.buttonSize,
 		Position = props.position,
 		AnchorPoint = props.anchorPoint,
-		BackgroundColor3 = theme.surface,
+		BackgroundColor3 = background,
 		BorderSizePixel = 0,
 		LayoutOrder = props.layoutOrder,
 		ZIndex = props.zIndex or 2,

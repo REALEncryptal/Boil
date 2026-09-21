@@ -20,7 +20,7 @@ return {
 		startChecked = false,
 		size = UILabs.Slider(40, 16, 200, 1),
 		padding = UILabs.Slider(5, 0, 20, 1),
-		strokeThickness = UILabs.Slider(4, 0, 12, 1),
+		strokeThickness = UILabs.Slider(ui.theme.strokeThickness, 0, 12, 0.5),
 	},
 
 	story = function(props)

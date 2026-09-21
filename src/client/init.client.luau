@@ -1,6 +1,18 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Brings the transport up before anything sends or listens. Features define
+-- their packets lazily (see any Packets.luau) so that a UI Labs story, which runs
+-- in edit mode with no server, never touches ByteNet at all — which means the
+-- receive loop has to be started from here rather than incidentally by whichever
+-- feature happened to require its packets first.
+require(ReplicatedStorage.Packages.ByteNet)
+
+-- Begin warming short interaction sounds before loading React or any feature.
+-- Playback skips a still-unloaded cue instead of letting Roblox queue it late.
+local audio = require(ReplicatedStorage.Shared.audio)
+audio.prepare()
+
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local Loader = require(ReplicatedStorage.Packages.Loader)
 local ReplicaController = require(ReplicatedStorage.Packages.ReplicaService)

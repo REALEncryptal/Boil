@@ -19,6 +19,15 @@ export type SlotProps = {
 	-- A `theme.space` step name, or reference pixels.
 	padding: (string | number)?,
 	automaticSize: Enum.AutomaticSize?,
+	-- Cut children off at the slot's edge. For art that is deliberately bigger
+	-- than the region it sits in (a figure whose trail runs off a card).
+	clipsDescendants: boolean?,
+	-- Render the slot and everything in it at this multiple of its laid-out
+	-- size, text included. `size` stays the unscaled size; layouts around the
+	-- slot see the scaled one. For a subtree that is composed at reference
+	-- size and then wants to be denser than the type roles would make it
+	-- (the Trails card row), not for fitting a device — that is Surface's job.
+	scale: number?,
 	layoutOrder: number?,
 	zIndex: number?,
 	children: { [string]: any }?,
@@ -28,6 +37,11 @@ return function(props: SlotProps)
 	local skin = SkinProvider.useSkin()
 
 	local children: { [string]: any } = {}
+	if props.scale ~= nil then
+		children.Scale = React.createElement("UIScale", {
+			Scale = props.scale,
+		})
+	end
 	if props.padding ~= nil then
 		local padding = tokens.resolveSpace(skin.theme.space, props.padding, 0)
 		children.Padding = React.createElement("UIPadding", {
@@ -49,6 +63,7 @@ return function(props: SlotProps)
 		Position = props.position,
 		AnchorPoint = props.anchorPoint,
 		AutomaticSize = props.automaticSize,
+		ClipsDescendants = props.clipsDescendants,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		LayoutOrder = props.layoutOrder,

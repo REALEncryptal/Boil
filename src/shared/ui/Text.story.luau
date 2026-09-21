@@ -10,7 +10,7 @@ local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local ui = require(ReplicatedStorage.Shared.ui)
 
 return {
-	summary = "Text primitive — toggle `shadow` for the drop-shadow gem treatment.",
+	summary = "Text primitive — toggle `shadow` for the drop-shadow gem treatment; `scaled` fills the box the way a stud-sized billboard label does.",
 	react = React,
 	reactRoblox = ReactRoblox,
 
@@ -18,6 +18,8 @@ return {
 		text = "Hello",
 		textSize = UILabs.Slider(50, 8, 200, 1),
 		shadow = false,
+		-- Fill the box rather than take `textSize`: the world-space treatment.
+		scaled = false,
 		weight = UILabs.Choose({
 			"Bold", "Heavy", "SemiBold", "Medium", "Regular",
 		}),
@@ -30,6 +32,7 @@ return {
 			text = c.text,
 			textSize = c.textSize,
 			shadow = c.shadow,
+			scaled = c.scaled,
 			weight = Enum.FontWeight[c.weight],
 			xAlignment = Enum.TextXAlignment[c.xAlignment],
 			size = UDim2.fromOffset(600, 80),

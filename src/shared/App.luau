@@ -30,6 +30,7 @@
 -- `loadPresentations` below.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Loader = require(ReplicatedStorage.Packages.Loader)
@@ -51,12 +52,73 @@ local function isPresentation(module: Instance): boolean
 		or string.match(module.Name, "WorldInteraction$") ~= nil
 end
 
+-- How long one presentation gets to load in EDIT MODE before the pass gives up on
+-- it. Only ever reached by a module that has wedged, not by a slow one.
+local EDIT_LOAD_TIMEOUT = 3
+
+-- Require one module on its own thread, with a deadline.
+--
+-- Edit mode has no server, so anything that yields waiting on an instance the
+-- server creates at runtime yields FOREVER. Both transports Boil ships do exactly
+-- that on the client — ByteNet on `ReplicatedStorage.BytenetStorage`,
+-- ReplicaController on `ReplicatedStorage.ReplicaRemoteEvents` — and a
+-- presentation inherits the wait through view → controller → transport.
+--
+-- Boil's own features require their transports lazily so this never fires (see
+-- any Packets.luau, and PlayerDataController.Start). This is the net for the ones
+-- that don't: on a single serial pass the first wedged module takes every later
+-- one with it, which reads as a completely blank story rather than as one missing
+-- screen.
+local function loadIsolated(module: ModuleScript)
+	local finished = false
+	local failure: string? = nil
+
+	task.spawn(function()
+		local ok, err = pcall(require, module)
+		failure = if ok then nil else tostring(err)
+		finished = true
+	end)
+
+	local waited = 0
+	while not finished and waited < EDIT_LOAD_TIMEOUT do
+		waited += task.wait(0.05)
+	end
+
+	if not finished then
+		warn(
+			`[App] "{module:GetFullName()}" never finished loading and was skipped. `
+				.. `Edit mode runs no server, so a require chain that reaches a `
+				.. `transport waits forever on an instance only the server creates. `
+				.. `Require that transport lazily — inside the function that uses it — `
+				.. `and this screen comes back. Everything else still rendered.`
+		)
+		return
+	end
+
+	if failure then
+		warn(`[App] "{module:GetFullName()}" failed to load: {failure}`)
+	end
+end
+
 -- Populate the UI registries from a client feature tree.
 --
 -- Safe to call more than once: registering twice warns and overwrites rather than
 -- duplicating, which matters because a UI Labs story re-requires on reload.
 function App.loadPresentations(clientFeatures: Instance)
-	Loader.LoadDescendants(clientFeatures, isPresentation)
+	-- The running game loads straight through. A presentation that yields there is
+	-- waiting on something that genuinely arrives, so a deadline would only
+	-- introduce a race the game doesn't have.
+	if RunService:IsRunning() then
+		Loader.LoadDescendants(clientFeatures, isPresentation)
+		return
+	end
+
+	-- Edit mode (UI Labs). One wedged module costs only itself; see loadIsolated.
+	for _, descendant in clientFeatures:GetDescendants() do
+		if descendant:IsA("ModuleScript") and isPresentation(descendant) then
+			loadIsolated(descendant)
+		end
+	end
 end
 
 -- The composed tree. Render it with `root:render(App.tree({}))`.

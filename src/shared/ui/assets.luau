@@ -42,6 +42,10 @@ Assets.Variants = {
 		fill = seq({ { time = 0, r = 255, g = 255, b = 0 }, { time = 1, r = 255, g = 170, b = 0 } }),
 		glow = seq({ { time = 0, r = 253, g = 255, b = 143 }, { time = 1, r = 255, g = 221, b = 140 } }),
 	},
+	brown = {
+		fill = seq({ { time = 0, r = 201, g = 130, b = 69 }, { time = 1, r = 117, g = 66, b = 31 } }),
+		glow = seq({ { time = 0, r = 243, g = 188, b = 120 }, { time = 1, r = 169, g = 103, b = 50 } }),
+	},
 	white = {
 		fill = seq({ { time = 0, r = 196, g = 255, b = 251 }, { time = 1, r = 150, g = 190, b = 226 } }),
 		glow = seq({ { time = 0, r = 255, g = 255, b = 255 }, { time = 1, r = 188, g = 244, b = 255 } }),
@@ -102,21 +106,41 @@ Assets.BADGE_GLOW_TRANSPARENCY = NumberSequence.new({
 	NumberSequenceKeypoint.new(1, 0.575),
 })
 
-export type VariantKey = "red" | "blue" | "green" | "purple" | "yellow" | "white" | "rainbow"
+export type VariantKey = "red" | "blue" | "green" | "purple" | "yellow" | "brown" | "white" | "rainbow"
 
 -- Image asset registry. Add new icons here (in kebab/camelCase keys) rather
 -- than pasting raw `rbxassetid://…` strings at call sites — keeping the lookup
 -- centralized means a re-upload only needs one edit. Icons are referenced as
 -- `ui.assets.Icons.<key>` and produce the full `rbxassetid://…` string.
 Assets.Icons = {
+	-- Rhos flat white sparkle, uploaded as an Image for world reward particles.
+	sparkle = "rbxassetid://100220629271335",
 	rebirth = "rbxassetid://93321219154443",
 	bandOfCash = "rbxassetid://73079263760001",
 	shoppingBasket = "rbxassetid://117006057996408",
 	questionMark = "rbxassetid://120234519496461",
+	-- Gvesster Icon Pack v7, Exclamation Mark Outline (Image, 256px).
+	exclamationMark = "rbxassetid://79951030403562",
 	friends = "rbxassetid://128905070355613",
 	wheel = "rbxassetid://92211074359779",
 	rocket = "rbxassetid://137349421699691",
 	book = "rbxassetid://76948871632136",
+	settings = "rbxassetid://110746636853521",
+	-- Winged shoe: the walk-speed readout's glyph.
+	flyingShoe = "rbxassetid://74811166675413",
+	-- Gvesster "Trail Rainbow Outline", uploaded 2026-09-07 as an Image. The
+	-- Trail Shop's sidebar glyph.
+	trailShop = "rbxassetid://125712266951543",
+	-- Free Icon Pack 2.0 "Egg 1st Outline", uploaded as an Image for the
+	-- right-side egg status rail.
+	eggStatus = "rbxassetid://110574149119998",
+	-- Free Icon Pack 2.0 "Dog 1st Outline", uploaded as an Image for the
+	-- right-side Pets rail, window, and empty preview. Studio's uploader exposes
+	-- this upload through its approved asset thumbnail rather than a direct body.
+	pet = "rbxthumb://type=Asset&id=84534125719370&w=420&h=420",
+	-- Greyscale figure with a trailing cape, uploaded 2026-09-07 as an Image.
+	-- The Trail Shop's card preview; the card tints it with the trail's colour.
+	trailPreview = "rbxassetid://88645944420579",
 	-- The project's close glyph: a red X on a disc, drawn to sit inside
 	-- CloseButton's black circle. See CloseButton.luau.
 	close = "rbxassetid://114443534484810",
@@ -134,7 +158,8 @@ Assets.Brainrots = {
 
 export type IconKey =
 	"rebirth" | "bandOfCash" | "shoppingBasket" | "questionMark"
-	| "friends" | "wheel" | "rocket" | "book"
+	| "friends" | "wheel" | "rocket" | "book" | "settings" | "flyingShoe"
+	| "trailShop" | "trailPreview" | "eggStatus" | "pet" | "sparkle" | "exclamationMark"
 
 export type BrainrotKey =
 	"tungTungTungSahur" | "liriliLarila" | "trippiTroppi" | "tralaleroTralala"

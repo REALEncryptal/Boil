@@ -60,6 +60,7 @@ return function(props: Boil.BadgeProps)
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundTransparency = 1,
 		Text = props.text or "",
+		RichText = props.richText,
 		TextColor3 = theme.mutedTextColor,
 		TextScaled = true,
 		TextWrapped = true,

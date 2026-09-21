@@ -22,11 +22,17 @@ local DEFAULT_SCROLLBAR_TRANSPARENCY = 0.4
 
 return function(props: Boil.ScrollListProps)
 	local horizontal = (props.direction or "vertical") == "horizontal"
-	local padding = tokens.resolveSpace(theme.space, props.padding, theme.space.md) + theme.strokeThickness
+	-- A fully transparent background means "layout only, no surface": no glass,
+	-- no outline, no inner glow, and no stroke clearance in the padding. That
+	-- is what a list of already-skinned cards wants — a tray around them read
+	-- as a panel inside the window panel.
+	local surfaced = props.backgroundTransparency ~= 1
+	local padding = tokens.resolveSpace(theme.space, props.padding, theme.space.md)
+		+ (if surfaced then theme.strokeThickness else 0)
 
 	local children: { [string]: any } = {
-		InnerGlow = parts.innerGlow(),
-		Outline = parts.outline(),
+		InnerGlow = if surfaced then parts.innerGlow() else nil,
+		Outline = if surfaced then parts.outline() else nil,
 
 		UIListLayout = React.createElement("UIListLayout", {
 			FillDirection = if horizontal then Enum.FillDirection.Horizontal else Enum.FillDirection.Vertical,

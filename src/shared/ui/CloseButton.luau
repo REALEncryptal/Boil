@@ -43,7 +43,7 @@ local ASPECT_RATIO = 0.8957
 -- The disc behind the glyph, and the outline around it.
 local DISC_COLOR = Color3.fromRGB(0, 0, 0)
 local STROKE_COLOR = Color3.fromRGB(0, 0, 0)
-local STROKE_THICKNESS = 5
+local STROKE_THICKNESS = 3.5
 
 export type CloseButtonProps = {
 	-- Reference pixels. Square is fine — the aspect constraint fits the art.

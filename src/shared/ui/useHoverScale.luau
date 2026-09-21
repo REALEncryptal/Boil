@@ -19,8 +19,11 @@
 --
 -- Wire a control by spreading `events` rather than naming the four handlers:
 --
---   local hover = useHoverScale()
+--   local hover = useHoverScale({ disabled = disabled })
 --   React.createElement("TextButton", merge({ … }, hover.events(onClick)))
+--
+-- Disabling clears hover/press state and returns to idle even when the pointer
+-- stays over the control. Re-enabling starts fresh, without a stale interaction.
 --
 -- Audio feedback: by default the hook plays a `hoverIn` SFX on enter, a
 -- `hoverOut` SFX on leave, and a `click` SFX on press (`triggerKind = "button"`
@@ -46,6 +49,7 @@ export type Sounds = {
 
 export type Options = {
 	triggerKind: TriggerKind?,
+	disabled: boolean?,
 	idleScale: number?,
 	hoverScale: number?,
 	pressScale: number?,
@@ -70,13 +74,15 @@ export type Handle = {
 	onLeave: () -> (),
 	onPress: () -> (),
 	onRelease: () -> (),
-	-- Ready-to-spread React event map for a GuiButton. Pass the click handler;
-	-- pass `disabled = true` to get an empty map (no feedback, no click).
+	-- Ready-to-spread React event map for a GuiButton. Disabled hooks return an
+	-- empty map. The legacy second argument only suppresses events; pass disabled
+	-- in Options to also reset the interaction state and scale.
 	events: (onClick: (() -> ())?, disabled: boolean?) -> { [any]: any },
 }
 
 local function useHoverScale(options: Options?): Handle
 	local opts = options or {}
+	local disabled = opts.disabled == true
 	local triggerKind = opts.triggerKind or "button"
 	local idle = opts.idleScale or theme.idleScale
 	local hoverScale = opts.hoverScale or theme.hoverScale
@@ -107,14 +113,28 @@ local function useHoverScale(options: Options?): Handle
 	local hovered, setHovered = React.useState(false)
 	local pressed, setPressed = React.useState(false)
 
-	local target = if pressed then pressScale elseif hovered then hoverScale else idle
-	local duration = if pressed then pressDuration else hoverDuration
+	React.useEffect(function()
+		if not disabled then
+			return
+		end
+		setHovered(false)
+		setPressed(false)
+	end, { disabled })
+
+	-- Mask immediately while the effect clears the stored state for re-enabling.
+	local isHovered = not disabled and hovered
+	local isPressed = not disabled and pressed
+	local target = if isPressed then pressScale elseif isHovered then hoverScale else idle
+	local duration = if isPressed then pressDuration else hoverDuration
 
 	local scaleRef = useTweenedScale(target, { duration = duration })
 
 	local noop = function() end
 
 	local onEnter = function()
+		if disabled then
+			return
+		end
 		setHovered(true)
 		if hoverInSound then
 			audio.playUI(hoverInSound)
@@ -127,12 +147,12 @@ local function useHoverScale(options: Options?): Handle
 		if pressEnabled then
 			setPressed(false)
 		end
-		if hoverOutSound then
+		if not disabled and hoverOutSound then
 			audio.playUI(hoverOutSound)
 		end
 	end
 
-	local onPress = if pressEnabled
+	local onPress = if pressEnabled and not disabled
 		then function()
 			setPressed(true)
 			if pressSound then
@@ -143,8 +163,8 @@ local function useHoverScale(options: Options?): Handle
 
 	local onRelease = if pressEnabled then function() setPressed(false) end else noop
 
-	local function events(onClick: (() -> ())?, disabled: boolean?): { [any]: any }
-		if disabled then
+	local function events(onClick: (() -> ())?, suppressEvents: boolean?): { [any]: any }
+		if disabled or suppressEvents then
 			return {}
 		end
 		local map: { [any]: any } = {
@@ -170,8 +190,8 @@ local function useHoverScale(options: Options?): Handle
 	return {
 		events = events,
 		scaleRef = scaleRef,
-		isHovered = hovered,
-		isPressed = pressed,
+		isHovered = isHovered,
+		isPressed = isPressed,
 		-- Kept for call sites that wire handlers individually; `events` is preferred.
 		onEnter = if isTouch then noop else onEnter,
 		onLeave = if isTouch then noop else onLeave,

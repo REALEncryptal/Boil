@@ -10,7 +10,7 @@ local UILabs = require(ReplicatedStorage.DevPackages.UILabs)
 local ui = require(ReplicatedStorage.Shared.ui)
 
 return {
-	summary = "Gem-style button. Pick a variant, type a label, drag size/textSize, click to print. Toggle disabled to preview the dark-dim no-op state.",
+	summary = "Gem-style button. Exercise size, label size, and optional surface/text stroke emphasis.",
 	react = React,
 	reactRoblox = ReactRoblox,
 
@@ -20,6 +20,8 @@ return {
 		}),
 		text = "Click",
 		textSize = UILabs.Slider(50, 8, 200, 1),
+		strokeThickness = UILabs.Slider(4, 0, 20, 1),
+		textStrokeThickness = UILabs.Slider(3, 0, 20, 1),
 		width = UILabs.Slider(60, 20, 400, 1),
 		height = UILabs.Slider(60, 20, 400, 1),
 		disabled = false,
@@ -31,6 +33,8 @@ return {
 			variant = c.variant,
 			text = c.text,
 			textSize = c.textSize,
+			strokeThickness = c.strokeThickness,
+			textStrokeThickness = c.textStrokeThickness,
 			size = UDim2.fromOffset(c.width, c.height),
 			position = UDim2.fromScale(0.5, 0.5),
 			anchorPoint = Vector2.new(0.5, 0.5),

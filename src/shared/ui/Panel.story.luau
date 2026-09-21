@@ -23,7 +23,7 @@ return {
 		width = UILabs.Slider(400, 100, 1200, 10),
 		height = UILabs.Slider(300, 100, 1000, 10),
 		transparency = UILabs.Slider(0.8, 0, 1, 0.05),
-		strokeThickness = UILabs.Slider(4, 0, 12, 1),
+		strokeThickness = UILabs.Slider(ui.theme.strokeThickness, 0, 12, 0.5),
 	},
 
 	story = function(props)

@@ -25,7 +25,7 @@ return {
 		title = "Inventory",
 		device = UILabs.Choose({ "actual", "desktop", "tablet", "phone" }),
 		skin = UILabs.Choose({ "gem", "flat" }),
-		titleVariant = UILabs.Choose({ "primary", "success", "warning", "danger", "special", "neutral" }),
+		titleVariant = UILabs.Choose({ "primary", "success", "warning", "danger", "special", "premium", "neutral" }),
 		width = UILabs.Slider(760, 320, 1200, 10),
 		height = UILabs.Slider(520, 240, 700, 10),
 		contentSpacing = UILabs.Choose({ "md", "xs", "sm", "lg", "xl" }),

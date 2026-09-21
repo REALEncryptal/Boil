@@ -99,10 +99,29 @@ ui.Row = require(script.Row)
 ui.Grid = require(script.Grid)
 ui.Slot = require(script.Slot)
 
+-- Bare image. Not skin-resolved and not a surface — see Icon.luau. Badge and
+-- IconButton are the primitives that wrap an image in a skinned surface.
+ui.Icon = require(script.Icon)
+
+-- A player's headshot in a ring. Content like Icon, so not skin-resolved; the
+-- ring's weight is the active skin's outline. See Avatar.luau.
+ui.Avatar = require(script.Avatar)
+
+-- The HUD readout: an icon and a number, no surface. Structure like Stack/Row,
+-- so no skin lists it — but the number inside is a skinned Text. Pair it with
+-- the two hooks below; see Counter.luau for why the caller owns them.
+ui.Counter = require(script.Counter)
+
 -- Skin-agnostic behavior hooks.
 ui.useHoverScale = require(script.useHoverScale)
 ui.useTweenedScale = require(script.useTweenedScale)
 ui.useTweenedUDim2 = require(script.useTweenedUDim2)
 ui.useTweenedRotation = require(script.useTweenedRotation)
+
+-- Counter behaviour, split out so the CALLER holds it: the feature that fires
+-- flying icons needs `credit`/`trigger` in its arrival handler and the
+-- reaction's `anchorRef` as the icons' destination. See Counter.luau.
+ui.useCountUp = require(script.useCountUp)
+ui.useCounterReaction = require(script.useCounterReaction)
 
 return ui

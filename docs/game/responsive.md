@@ -125,13 +125,25 @@ stuck in its hovered state after a tap. Touch gets press feedback only, plus an
 Wire a control by spreading the map rather than naming handlers:
 
 ```lua
-local hover = ui.useHoverScale()
--- merge hover.events(onClick, disabled) into your TextButton props
+local hover = ui.useHoverScale({ disabled = disabled })
+-- merge hover.events(onClick) into your TextButton props
 ```
+
+Pass `disabled` to the hook so disabling during hover or press clears both
+states and returns the scale to idle. The legacy second argument to `events`
+only suppresses handlers; it cannot reset the hook state.
 
 `Button`, `IconButton` and `Checkbox` also carry a `UISizeConstraint` floored at
 `tokens.minTouchTarget` (38 reference px), so a control can never render below
 finger size no matter what the call site asks for.
+
+## World-space labels
+
+A `BillboardGui` sized in scale units is measured in studs and already shrinks
+with distance, so it should not be wrapped in `ui.Surface`. Size its children in
+scale as well, and give `ui.Text` `scaled = true` so glyphs follow their box
+instead of a role's fixed pixel size. The role still selects typography and
+outline behavior; outlines intentionally remain pixel-fixed.
 
 ## Checklist for a new screen
 

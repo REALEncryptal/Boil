@@ -77,7 +77,7 @@ return {
 
 	controls = {
 		skin = UILabs.Choose(ui.skins.names()),
-		variant = UILabs.Choose({ "red", "blue", "green", "purple", "yellow", "white", "rainbow" }),
+		variant = UILabs.Choose({ "red", "blue", "green", "purple", "yellow", "brown", "white", "rainbow" }),
 		progress = UILabs.Slider(0.6, 0, 1, 0.01),
 		checked = true,
 	},

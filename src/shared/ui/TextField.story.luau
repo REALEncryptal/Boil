@@ -18,7 +18,7 @@ return {
 		height = UILabs.Slider(60, 30, 200, 1),
 		textSize = UILabs.Slider(40, 8, 120, 1),
 		transparency = UILabs.Slider(0.8, 0, 1, 0.05),
-		strokeThickness = UILabs.Slider(4, 0, 12, 1),
+		strokeThickness = UILabs.Slider(ui.theme.strokeThickness, 0, 12, 0.5),
 		padding = UILabs.Slider(10, 0, 40, 1),
 		placeholderText = "Type something",
 		clearTextOnFocus = false,

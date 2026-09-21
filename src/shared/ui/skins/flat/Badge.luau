@@ -42,6 +42,7 @@ return function(props: contract.BadgeProps)
 		Size = UDim2.fromScale(0, 1),
 		BackgroundTransparency = 1,
 		Text = props.text or "",
+		RichText = props.richText,
 		TextColor3 = theme.textColor,
 		TextSize = props.textSize
 			or tokens.resolveType(theme.type, props.role or theme.roles.badge, theme.type.body),

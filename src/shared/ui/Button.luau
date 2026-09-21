@@ -27,6 +27,8 @@ type Props = {
 	role: string?,
 	textSize: number?,
 	textWeight: Enum.FontWeight?,
+	strokeThickness: number?,
+	textStrokeThickness: number?,
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
@@ -48,7 +50,7 @@ return function(props: Props)
 	local rotation = if variantKey == "rainbow" then 0 else 90
 
 	local disabled = props.disabled == true
-	local hover = useHoverScale()
+	local hover = useHoverScale({ disabled = disabled })
 	-- Reference-space floor that renders to the real-pixel minimum tap target.
 	local touchMin = tokens.minTouchReference(useViewport.useScale())
 
@@ -74,7 +76,7 @@ return function(props: Props)
 		UIScale = React.createElement("UIScale", { Scale = 1, ref = hover.scaleRef }),
 
 		UIStroke = React.createElement("UIStroke", {
-			Thickness = theme.strokeThickness,
+			Thickness = props.strokeThickness or theme.strokeThickness,
 			LineJoinMode = Enum.LineJoinMode.Miter,
 		}),
 
@@ -89,7 +91,7 @@ return function(props: Props)
 					AutoButtonColor = false,
 					ZIndex = 10,
 				}
-				for key, value in hover.events(props.onClick, disabled) do
+				for key, value in hover.events(props.onClick) do
 					trigger[key] = value
 				end
 				return trigger
@@ -126,6 +128,7 @@ return function(props: Props)
 			anchorPoint = Vector2.new(0.5, 0.5),
 			zIndex = 2,
 			shadow = true,
+			strokeThickness = props.textStrokeThickness,
 			truncate = true,
 		}),
 	})

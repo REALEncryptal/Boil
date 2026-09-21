@@ -153,11 +153,12 @@ Every number in a theme is authored against 1280×720 and scaled at render by
 `variant` names what a control **means**, not what colour it is:
 
 ```
-primary | secondary | danger | success | warning | neutral | special
+primary | secondary | danger | success | warning | neutral | special | premium | pet
 ```
 
 Each skin maps those onto its own palette through `theme.resolveVariant` — gem to
-a gradient, flat to an accent colour.
+a gradient, flat to an accent colour. `premium` marks a paid action and `pet`
+marks pet-specific chrome; both remain semantic instead of naming palette colours.
 
 `VariantKey` is an **open string**, not a closed union. Skins are installable, so
 a skin must be able to offer a variant the framework never shipped; an unknown
@@ -167,6 +168,23 @@ colour names (`red`, `blue`, …) still resolve, so older call sites keep workin
 The old scheme spelled a confirm button `"green"`. That made the seam a lie: a
 skin could not reinterpret intent, and the closed union meant an installed skin
 could not add a variant even though the skin *set* was open.
+
+## Insets on surfaces
+
+`Panel.padding` (and `Window.contentPadding`) is the inset the caller wants
+past the skin's own outline, not the total. Every skin draws its stroke inside
+the frame and adds that thickness itself, so `padding = "md"` leaves exactly one
+`md` of visible air between the outline and the content. Omit the prop to take
+the skin's default inset.
+
+## Surface families
+
+The kit has two surface families: `gem`, the opaque variant-tinted surface, and
+`glass`, the translucent neutral surface. `Panel` chooses implicitly from its
+variant; gem-first controls such as `IconButton` accept
+`surface = "gem" | "glass"`. Glass ignores `variant`, because a tinted edge on
+a translucent body no longer reads as neutral chrome. `SurfaceStyle` remains an
+open string so installable skins may add families without breaking the contract.
 
 ## Adding a component to the contract
 
